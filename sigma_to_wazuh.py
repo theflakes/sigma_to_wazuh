@@ -10,10 +10,10 @@
 
     Complete parsing of Sigma logic is not implemented. Just simpler rules are converted presently.
     Rules skipped:
-        - Any containging parentheses
+        - Any containing parentheses
         - Any using Sigma near logic
         - Any using a timeframe condition
-        - There are still some errors parsing some rules
+        - There are still some errors parsing some rules. E.g. some rules with negation.
     Stats on all the above will be reported by this script.
 """
 import sys, os
