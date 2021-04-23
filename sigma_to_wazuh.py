@@ -57,7 +57,12 @@ class BuildRules(object):
         return root
 
     def add_header_comment(self, root):
-        comment = Comment("Author: Brian Kellogg | Sigma: https://github.com/SigmaHQ/sigma | Wazuh: https://wazuh.com")
+        comment = Comment("""
+            Author: Brian Kellogg
+            Sigma: https://github.com/SigmaHQ/sigma
+            Wazuh: https://wazuh.com
+            All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md
+        """)
         root.append(comment)
 
     def init_rule(self, level):
@@ -102,6 +107,10 @@ class BuildRules(object):
             mitre_id = SubElement(mitre, 'id')
             mitre_id.text = t
 
+    def add_sigma_author(self, rule, sigma_rule_auther):
+        comment = Comment('Sigma Rule Author: ' + sigma_rule_auther)
+        rule.append(comment)
+
     def add_sigma_link_comment(self, rule, sigma_rule_link):
         comment = Comment(self.rules_link + sigma_rule_link)
         rule.append(comment)
@@ -122,6 +131,9 @@ class BuildRules(object):
         level = sigma_rule['level']
         rule = self.init_rule(level)
         self.add_sigma_link_comment(rule, sigma_rule_link)
+        # Add rule link and author
+        if 'author' in sigma_rule:
+            self.add_sigma_author(rule, sigma_rule['author'])
         if 'tags' in sigma_rule:
             self.add_mitre(rule, sigma_rule['tags'])
         self.add_description(rule, sigma_rule['title'])
