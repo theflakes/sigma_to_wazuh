@@ -334,7 +334,7 @@ class ParseSigmaRules(object):
             Messy attempt at a Sigma logic condition lexer. I am not good at this yet.
 
             Need to be able to handle rules like below:
-            https://github.com/SigmaHQ/sigma/tree/master/rules./network/zeek/zeek_smb_converted_win_susp_psexec.yml
+            https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             The above rule converted to one Wazuh rule would be useless. Probably best to break it into two rules
             using an if_sid to handle the negation.
         """
@@ -435,9 +435,10 @@ def main():
             stats.rules_skipped += 1
             print("SKIPPED Sigma rule: " + rule)
             continue
-        #print(rule)
+        print(rule)
 
-        partial_path = rule.replace('./sigma/rules', '')
+        # build the URL to the sigma rule, handle relative paths
+        partial_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/')
 
         if isinstance(conditions, list):
             for condition in conditions: # create new rule for each condition
