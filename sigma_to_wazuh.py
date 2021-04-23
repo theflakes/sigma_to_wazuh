@@ -330,6 +330,14 @@ class ParseSigmaRules(object):
         return False, negate
 
     def handle_tokens(self, rules, tokens, sigma_rule, sigma_rule_link, rule_path):
+        """
+            Messy attempt at a Sigma logic condition lexer.
+
+            Need to be able to handle rules like below:
+            https://github.com/SigmaHQ/sigma/tree/master/rules./network/zeek/zeek_smb_converted_win_susp_psexec.yml
+            The above rule converted to one Wazuh rule would be useless. Probably best to break it into two rules
+            using an if_sid to handle the negation.
+        """
         level = 0
         is_or = False
         negate = []
