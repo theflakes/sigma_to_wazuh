@@ -435,7 +435,7 @@ def main():
             stats.rules_skipped += 1
             print("SKIPPED Sigma rule: " + rule)
             continue
-        print(rule)
+        #print(rule)
 
         # build the URL to the sigma rule, handle relative paths
         partial_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/')
