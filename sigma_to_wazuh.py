@@ -335,8 +335,8 @@ class ParseSigmaRules(object):
 
             Need to be able to handle rules like below:
             https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
-            The above rule converted to one Wazuh rule would be useless. Probably best to break it into two rules
-            using an if_sid to handle the negation.
+            The above rule converted to one Wazuh rule would not produce expected detection. 
+            Probably best to break it into two rules using an if_sid to handle the negation.
         """
         level = 0
         is_or = False
