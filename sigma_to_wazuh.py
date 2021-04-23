@@ -58,11 +58,11 @@ class BuildRules(object):
 
     def add_header_comment(self, root):
         comment = Comment("""
-            Author: Brian Kellogg
-            Sigma: https://github.com/SigmaHQ/sigma
-            Wazuh: https://wazuh.com
-            All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md
-        """)
+Author: Brian Kellogg
+Sigma: https://github.com/SigmaHQ/sigma
+Wazuh: https://wazuh.com
+All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master/LICENSE.Detection.Rules.md
+""")
         root.append(comment)
 
     def init_rule(self, level):
