@@ -331,7 +331,7 @@ class ParseSigmaRules(object):
 
     def handle_tokens(self, rules, tokens, sigma_rule, sigma_rule_link, rule_path):
         """
-            Messy attempt at a Sigma logic condition lexer.
+            Messy attempt at a Sigma logic condition lexer. I am not good at this yet.
 
             Need to be able to handle rules like below:
             https://github.com/SigmaHQ/sigma/tree/master/rules./network/zeek/zeek_smb_converted_win_susp_psexec.yml
