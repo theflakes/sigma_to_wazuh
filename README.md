@@ -20,6 +20,7 @@ Wazuh HIDS: [https://wazuh.com](https://wazuh.com)
 - Any using Sigma near logic
 - Any using a timeframe condition
 - Error loading some rules needing some cleanup
+- Any deprecated rules
 
 Example Sigma rule conversions:
 ```
