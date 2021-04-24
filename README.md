@@ -77,8 +77,8 @@ WAZUH RULE(s):
     <field name="data.name" negate="no" type="pcre2">(?i)(?:\-stdin|\-stdout|\-stderr)$</field>
     <field name="data.path" negate="yes" type="pcre2">(?i)^(?:PSEXESVC)</field>
 </rule>
-
-
+```
+```
 SIGMA RULE:
 -----------------------------------------
 title: CobaltStrike Malleable Amazon Browsing Traffic Profile
