@@ -13,7 +13,6 @@
         - Any containing parentheses
         - Any using Sigma near logic
         - Any using a timeframe condition
-        - There are still some errors parsing some rules. E.g. some rules with negation.
     Stats on all the above will be reported by this script.
 """
 import sys, os
@@ -361,6 +360,7 @@ class ParseSigmaRules(object):
                 level -= 1
             elif token.lower() == 'or':
                 is_or = True
+                all_logic =[] # clear list as we will be creating a new rule to handle OR logic
             elif token.lower() == 'and':
                 continue
             elif token.lower() == 'not':
