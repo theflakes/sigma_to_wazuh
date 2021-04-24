@@ -342,10 +342,10 @@ class ParseSigmaRules(object):
             https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             The above rule converted to one Wazuh rule would not produce expected detection. 
         """
-        level = 0
-        is_or = False
-        negate = []
-        all_logic =[] # track all logic used in a rule to ensure a rule does not contain duplicate logic
+        level = 0       # track logic paren nesting
+        is_or = False   # or logic is not supported between logic statements in a Wazuh rule
+        negate = []     # stack to track negation logic
+        all_logic =[]   # track all logic used in a rule to ensure a rule does not contain duplicate logic
         rule = rules.create_rule(sigma_rule, sigma_rule_link)
         for token in tokens:
             if token == '(':
