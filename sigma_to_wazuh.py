@@ -276,6 +276,9 @@ class ParseSigmaRules(object):
 
     def handle_keywords(self, rules, rule, keywords, sigma_rule, 
                         sigma_rule_link, logic, negate):
+        """
+            A condition set as keywords will have a list of fields to look for those keywords in.
+        """
         if 'fields' in sigma_rule:
             for f in sigma_rule['fields']:
                 if isinstance(logic, list): # if logic is still a list then its contain|all logic
@@ -306,8 +309,8 @@ class ParseSigmaRules(object):
             else:
                 rules.add_logic(rule, field, negate, logic)
 
-    def handle_fields(self, rules, rule, token, negate, is_or, 
-                    sigma_rule, sigma_rule_link, detection):
+    def handle_fields(self, rules, rule, token, negate, is_or, sigma_rule, 
+                    sigma_rule_link, detection, all_logic):
         if negate:
             n = negate.pop()
             if negate and negate[-1] == '(':
@@ -322,12 +325,14 @@ class ParseSigmaRules(object):
 
         for k, v in detections.items():
             field, logic = self.convert_transforms(k, v)
-            if k == 'keywords':
-                self.handle_keywords(rules, rule, v, sigma_rule, sigma_rule_link, logic, n)
-            else:
-                self.is_dict_or_not(logic, rules, rule, field, n)
+            if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
+                all_logic.append(logic)
+                if k == 'keywords':
+                    self.handle_keywords(rules, rule, v, sigma_rule, sigma_rule_link, logic, n)
+                else:
+                    self.is_dict_or_not(logic, rules, rule, field, n)
 
-        return False, negate
+        return False, negate, all_logic
 
     def handle_tokens(self, rules, tokens, sigma_rule, sigma_rule_link, rule_path):
         """
@@ -336,11 +341,11 @@ class ParseSigmaRules(object):
             Need to be able to handle rules like below:
             https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             The above rule converted to one Wazuh rule would not produce expected detection. 
-            Probably best to break it into two rules using an if_sid to handle the negation.
         """
         level = 0
         is_or = False
         negate = []
+        all_logic =[] # track all logic used in a rule to ensure a rule does not contain duplicate logic
         rule = rules.create_rule(sigma_rule, sigma_rule_link)
         for token in tokens:
             if token == '(':
@@ -365,10 +370,13 @@ class ParseSigmaRules(object):
                 else:
                     negate.append("yes")
             elif token.lower() == '1_of_them':
-                self.handle_one_of_them(rules, rule, sigma_rule['detection'], sigma_rule, sigma_rule_link)
+                self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
+                                        sigma_rule, sigma_rule_link)
             else:
-                is_or, negate = self.handle_fields(rules, rule, token,negate, is_or, sigma_rule,  
-                                                    sigma_rule_link, sigma_rule['detection'][token])
+                is_or, negate, all_logic = self.handle_fields(rules, rule, token,negate, is_or, 
+                                                            sigma_rule, sigma_rule_link, 
+                                                            sigma_rule['detection'][token], 
+                                                            all_logic)
 
 
 class TrackStats(object):
