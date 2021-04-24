@@ -233,7 +233,7 @@ class ParseSigmaRules(object):
 
     def fixup_logic(self, logic):
         logic = str(logic)
-        if len(logic) > 2:
+        if len(logic) > 2:  # when converting to Wazuh pcre2 expressions, we don't need start and end wildcards
             if logic[0] == '*': logic = logic[1:]
             if logic[-1] == '*': logic = logic[:-1]
         return re.escape(logic)
