@@ -360,7 +360,7 @@ class ParseSigmaRules(object):
                 level -= 1
             elif token.lower() == 'or':
                 is_or = True
-                all_logic =[] # clear list as we will be creating a new rule to handle OR logic
+                all_logic =[] # clear logic list as we will be creating a new rule to handle OR logic
             elif token.lower() == 'and':
                 continue
             elif token.lower() == 'not':
