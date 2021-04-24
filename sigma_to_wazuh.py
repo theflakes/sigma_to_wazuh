@@ -387,6 +387,10 @@ class TrackStats(object):
         self.rules_skipped = 0
 
     def check_for_logic_to_skip(self, detection, condition):
+        """
+            All logic conditions are not parsed yet.
+            This procedure will skip Sigma rules we are not ready to parse.
+        """
         skip = False
         if '|' in condition:
             skip = True
