@@ -26,6 +26,68 @@ Example Sigma rule conversions:
 ```
 SIGMA RULE:
 -----------------------------------------
+title: Suspicious Compression Tool Parameters
+id: 27a72a60-7e5e-47b1-9d17-909c9abafdcd
+status: experimental
+description: Detects suspicious command line arguments of common data compression tools
+references:
+    - https://twitter.com/SBousseaden/status/1184067445612535811
+tags:
+    - attack.collection
+    - attack.t1560.001
+    - attack.exfiltration # an old one
+    - attack.t1020 # an old one
+    - attack.t1002 # an old one
+author: Florian Roth, Samir Bousseaden
+date: 2019/10/15
+modified: 2020/09/05
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        OriginalFileName:
+            - '7z*.exe'
+            - '*rar.exe'
+            - '*Command*Line*RAR*'
+        CommandLine|contains:
+            - ' -p'
+            - ' -ta'
+            - ' -tb'
+            - ' -sdel'
+            - ' -dw'
+            - ' -hp'
+    falsepositive:
+        ParentImage|startswith: 'C:\Program'
+    condition: selection and not falsepositive
+falsepositives:
+    - unknown
+level: high
+
+
+WAZUH RULE(s):
+-----------------------------------------
+<rule id="1000559" level="13">
+    <!--https://github.com/SigmaHQ/sigma/tree/master/rules/windows/process_creation/win_susp_compression_params.yml-->
+    <!--Sigma Rule Author: Florian Roth, Samir Bousseaden-->
+    <mitre>
+        <id>attack.collection</id>
+        <id>attack.t1560.001</id>
+        <id>attack.exfiltration</id>
+        <id>attack.t1020</id>
+        <id>attack.t1002</id>
+    </mitre>
+    <description>Suspicious Compression Tool Parameters</description>
+    <options>no_full_log,alert_by_email</options>
+    <group>process_creation,windows,</group>
+    <field name="win.eventdata.originalFileName" negate="no" type="pcre2">(?i)7z.+\.exe|rar\.exe|Command.+Line.+RAR</field>
+    <field name="win.eventdata.commandLine" negate="no" type="pcre2">(?i)\ \-p|\ \-ta|\ \-tb|\ \-sdel|\ \-dw|\ \-hp</field>
+    <field name="win.eventdata.parentImage" negate="yes" type="pcre2">(?i)^(?:C:\\Program)</field>
+</rule>
+```
+```
+SIGMA RULE:
+-----------------------------------------
 title: Suspicious PsExec Execution - Zeek
 id: f1b3a22a-45e6-4004-afb5-4291f9c21166
 description: detects execution of psexec or paexec with renamed service name, this rule helps to filter out the noise if psexec is used for legit purposes or if attacker uses a different psexec client other than sysinternal one
