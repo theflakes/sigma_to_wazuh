@@ -269,8 +269,8 @@ class ParseSigmaRules(object):
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product):
-        rules.root.remove(rule)
-        rules.rule_id -= 1
+        rules.root.remove(rule) # destroy current rule
+        rules.rule_id -= 1      # decrement the current rule id as last rule was removed
         if isinstance(detection, dict):
             for k, v in detection.items():
                 if k == "condition": continue
@@ -293,8 +293,8 @@ class ParseSigmaRules(object):
                 else:
                     rules.add_logic(rule, product, f, negate, logic)
                 rule = rules.create_rule(sigma_rule, sigma_rule_link)
-            rules.root.remove(rule)
-            rules.rule_id -= 1
+            rules.root.remove(rule) # destroy the extra rule that is created
+            rules.rule_id -= 1      # decrement the current rule id as last rule was removed
         else: # field(s) were not specified, so target full log
             rules.add_logic(rule, product, "full_log", negate, logic)
 
