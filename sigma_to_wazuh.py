@@ -76,26 +76,30 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
                 return self.config[product][field]
         return "full_log" # target full log if we cannot find the field
 
+    def if_ends_in_space(self, value):
+        """
+            spaces at end of logic are being chopped, therefore hacking this fix
+        """
+        if value.endswith(' '):
+            return '(?i)(?:' + value + ')'
+        return '(?i)' + value
+
     def add_logic(self, rule, product, field, negate, value):
         logic = SubElement(rule, 'field')
         logic.set('name', self.convert_field_name(product, field))
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
-        if value.endswith(' '):
-            value = '(?i)(?:' + value + ')' # spaces at end of logic are being chopped, therefore hacking this fix
-        else:
-            value = '(?i)' + value
-        logic.text = value.replace(r'\*', r'.+') # assumption is all '*' are wildcards
+        logic.text = self.if_ends_in_space(value).replace(r'\*', r'.+') # assumption is all '*' are wildcards
 
     def get_level(self, level):
         if level == "critical":
             return self.critical
-        elif level == "high":
+        if level == "high":
             return self.high
-        elif level == "medium":
+        if level == "medium":
             return self.medium
-        else:
-            return self.low
+        
+        return self.low
 
     def add_options(self, rule, level):
         options = SubElement(rule, 'options')
@@ -179,6 +183,7 @@ class ParseSigmaRules(object):
         configParser = configparser.RawConfigParser()   
         configFilePath = r'./config.ini'
         configParser.read(configFilePath)
+        self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
         self.sigma_rules_dir = configParser.get('sigma', 'directory')
         self.sigma_rules = self.get_sigma_rules()
         self.error_count = 0
@@ -205,23 +210,30 @@ class ParseSigmaRules(object):
             return ""
 
     def fixup_condition(self, condition):
+        """
+            Replace spaces with _ when the words constitue a logic operation.
+            Allows for easier tokenization.
+        """
         if isinstance(condition, list):
             return [tok.replace('1 of them', '1_of_them')
                             .replace('all of them', 'all_of_them')
                             .replace('1 of', '1_of')
                             .replace('all of', 'all_of') 
                             for tok in condition]
-        else:
-            return condition.replace('1 of them', '1_of_them')\
-                            .replace('all of them', 'all_of_them')\
-                            .replace('1 of', '1_of')\
-                            .replace('all of', 'all_of')
+        return condition.replace('1 of them', '1_of_them')\
+                        .replace('all of them', 'all_of_them')\
+                        .replace('1 of', '1_of')\
+                        .replace('all of', 'all_of')
 
     def pairwise(self, iterable):
         "s -> (s0,s1), (s1,s2), (s2, s3), ..."
         a, b = tee(iterable)
         next(b, None)
         return zip(a, b)
+
+    def remove_wazuh_rule(self, rules, rule):
+        rules.root.remove(rule) # destroy the extra rule that is created
+        rules.rule_id -= 1      # decrement the current rule id as last rule was removed
 
     def get_detection(self, detection, token):
         values = {}
@@ -230,11 +242,11 @@ class ParseSigmaRules(object):
                 if isinstance(item, dict):
                     for k, v in item.items():
                         values[k] = v
-                else: # handle one deep detections
-                    values[token] = detection
-        else:
-            for k, v in detection.items():
-                values[k] = v
+                    continue
+                values[token] = detection # handle one deep detections
+            return values
+        for k, v in detection.items():
+            values[k] = v
         return values
 
     def fixup_logic(self, logic):
@@ -247,30 +259,24 @@ class ParseSigmaRules(object):
     def handle_list(self, value):
         if isinstance(value, list):
             return ('|'.join([self.fixup_logic(i) for i in value]))
-        else:
-            return self.fixup_logic(value)
+        return self.fixup_logic(value)
 
     def convert_transforms(self, key, value):
-        field = logic = ""
         if '|' in key:
             field, transform = key.split('|', 1)
-            if 'contains' == transform:
-                logic = self.handle_list(value)
-            elif 'contains|all' == transform:
-                logic = value
-            elif 'startswith' == transform:
-                logic = '^(?:' + self.handle_list(value) + ')'
-            elif 'endswith' == transform:
-                logic = '(?:' + self.handle_list(value) + ')$'
-        else:
-            field = key
-            logic = self.handle_list(value)
-        return field, logic
+            if transform == 'contains':
+                return field, self.handle_list(value)
+            if transform == 'contains|all':
+                return field, value
+            if transform == 'startswith':
+                return field, '^(?:' + self.handle_list(value) + ')'
+            if transform == 'endswith':
+                return field, '(?:' + self.handle_list(value) + ')$'
+        return key, self.handle_list(value)
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product):
-        rules.root.remove(rule) # destroy current rule
-        rules.rule_id -= 1      # decrement the current rule id as last rule was removed
+        self.remove_wazuh_rule(rules, rule)
         if isinstance(detection, dict):
             for k, v in detection.items():
                 if k == "condition": continue
@@ -278,55 +284,48 @@ class ParseSigmaRules(object):
                     for x, y in v.items():
                         rule = rules.create_rule(sigma_rule, sigma_rule_link)
                         field, logic = self.convert_transforms(x, y)
-                        self.is_dict_or_not(logic, rules, rule, product, field, "no")
+                        self.is_dict_list_or_not(logic, rules, rule, product, field, "no")
 
-    def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, 
-                        product, logic, negate):
+    def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate):
         """
             A condition set as keywords will have a list of fields to look for those keywords in.
         """
         if 'fields' in sigma_rule:
             for f in sigma_rule['fields']:
-                if isinstance(logic, list): # if logic is still a list then its contain|all logic
-                    for l in logic:
-                        rules.add_logic(rule, product, f, negate, l)
-                else:
-                    rules.add_logic(rule, product, f, negate, logic)
+                self.is_dict_list_or_not(logic, rules, rule, product, f, negate)
                 rule = rules.create_rule(sigma_rule, sigma_rule_link)
-            rules.root.remove(rule) # destroy the extra rule that is created
-            rules.rule_id -= 1      # decrement the current rule id as last rule was removed
-        else: # field(s) were not specified, so target full log
-            rules.add_logic(rule, product, "full_log", negate, logic)
+            self.remove_wazuh_rule(rules, rule)
+            return
+        rules.add_logic(rule, product, "full_log", negate, logic)
 
     def is_dict_logic(self, values, rules, product, rule, negate):
         for k, v in values.items():
             if isinstance(v, dict):
                 self.is_dict_logic(v, rules, product, rule, negate)
-            else:
-                rules.add_logic(rule, product, k, negate, v)
+                continue
+            rules.add_logic(rule, product, k, negate, v)
 
-    def is_dict_or_not(self, logic, rules, rule, product, field, negate):
+    def is_dict_list_or_not(self, logic, rules, rule, product, field, negate):
         if isinstance(logic, dict):
             self.is_dict_logic(logic, rules, product, rule, negate)
-        else:
-            if isinstance(logic, list): # if logic is still a list then its contain|all logic
-                for l in logic:
-                    rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
-            else:
-                rules.add_logic(rule, product, field, negate, logic)
+            return
+        if isinstance(logic, list): # if logic is still a list then its contain|all logic
+            for l in logic:
+                rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
+            return
+        rules.add_logic(rule, product, field, negate, logic)
 
     def handle_fields(self, rules, rule, token, negate, is_or, sigma_rule, 
                         sigma_rule_link, detection, all_logic, product):
+        neg = "no"
         if negate:
             neg = negate.pop()
             if negate and negate[-1] == '(':
                 negate.append(neg)
-        else:
-            neg = "no"
 
         detections = self.get_detection(detection, token)
 
-        if is_or:
+        if is_or: # or logic requires another Wazuh rule
             rule = rules.create_rule(sigma_rule, sigma_rule_link)
 
         for k, v in detections.items():
@@ -335,16 +334,15 @@ class ParseSigmaRules(object):
                 all_logic.append(logic)
                 if k == 'keywords':
                     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, neg)
-                else:
-                    self.is_dict_or_not(logic, rules, rule, product, field, neg)
+                    continue
+                self.is_dict_list_or_not(logic, rules, rule, product, field, neg)
 
         return False, negate, all_logic
 
     def get_product(self, sigma_rule):
         if 'logsource' in sigma_rule and 'product' in sigma_rule['logsource']:
             return sigma_rule['logsource']['product'].lower()
-        else:
-            return ""
+        return ""
 
     def handle_tokens(self, rules, tokens, sigma_rule, sigma_rule_link, rule_path):
         """
@@ -367,30 +365,33 @@ class ParseSigmaRules(object):
                     last = negate.pop()
                     negate.append('(')
                     negate.append(last)
-            elif token == ')':
+                continue
+            if token == ')':
                 if len(negate) > 1 and negate[-2] == '(':
                     negate.pop()
                     negate.pop()
                 level -= 1
-            elif token.lower() == 'or':
+                continue
+            if token.lower() == 'or':
                 is_or = True
                 all_logic =[] # clear logic list as we will be creating a new rule to handle OR logic
-            elif token.lower() == 'and':
                 continue
-            elif token.lower() == 'not':
+            if token.lower() == 'and': continue
+            if token.lower() == 'not':
                 if negate:
                     if negate[-1] != "yes":
                         negate.append('yes')
-                else:
-                    negate.append("yes")
-            elif token.lower() == '1_of_them':
+                    continue
+                negate.append("yes")
+                continue
+            if token.lower() == '1_of_them':
                 self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
                                         sigma_rule, sigma_rule_link, product)
-            else:
-                is_or, negate, all_logic = self.handle_fields(rules, rule, token, negate, is_or, 
-                                                            sigma_rule, sigma_rule_link, 
-                                                            sigma_rule['detection'][token], 
-                                                            all_logic, product)
+                continue
+            is_or, negate, all_logic = self.handle_fields(rules, rule, token, negate, is_or, 
+                                                        sigma_rule, sigma_rule_link, 
+                                                        sigma_rule['detection'][token], 
+                                                        all_logic, product)
 
 
 class TrackStats(object):
@@ -398,6 +399,7 @@ class TrackStats(object):
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
+        self.experimental_skips = 0
         self.rules_skipped = 0
 
     def check_for_logic_to_skip(self, detection, condition):
@@ -432,6 +434,7 @@ class TrackStats(object):
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
         print("        Number of Sigma PAREN rules skipped: %s" % self.paren_skips)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
+        print(" Number of Sigma Experimental rules skipped: %s" % self.experimental_skips)
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
         print("                Total Sigma rules converted: %s" % sigma_rules_converted)
         print("-" * 55)
@@ -454,6 +457,14 @@ def main():
             print("ERROR loading Sigma rule: " + rule)
             continue
 
+        if convert.process_experimental_rules == "False":
+            if 'status' in sigma_rule:
+                if sigma_rule['status'] == "experimental":
+                    stats.rules_skipped += 1
+                    stats.experimental_skips += 1
+                    print("SKIPPED Sigma rule: " + rule)
+                    continue
+
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
 
         skip_rule = stats.check_for_logic_to_skip(sigma_rule['detection'], conditions)
@@ -467,12 +478,12 @@ def main():
         partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/')
 
         if isinstance(conditions, list):
-            for condition in conditions: # create new rule for each condition
+            for condition in conditions: # create new rule for each condition, needs work
                 tokens = condition.strip().split(' ')
                 convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
-        else:
-            tokens = conditions.strip().split(' ')
-            convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
+            continue
+        tokens = conditions.strip().split(' ')
+        convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
 
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
