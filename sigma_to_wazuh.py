@@ -166,7 +166,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         xml = re.sub(r'<field(.+)>\n\s+', r'<field\1>', xml)
         xml = re.sub(r'\s+</field>', r'</field>', xml)
 
-        # fixup some output mess up by the above
+        # fixup some output messed up by the above
         xml = re.sub(r'</rule></group>', r'</rule>\n</group>', xml)
         xml = xml.replace('<?xml version="1.0" encoding="utf-8"?>\n', '')
 
