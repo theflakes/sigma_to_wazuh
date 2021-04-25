@@ -457,7 +457,7 @@ def main():
             print("ERROR loading Sigma rule: " + rule)
             continue
 
-        if convert.process_experimental_rules == "False":
+        if convert.process_experimental_rules == "no":
             if 'status' in sigma_rule:
                 if sigma_rule['status'] == "experimental":
                     stats.rules_skipped += 1
