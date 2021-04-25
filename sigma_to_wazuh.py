@@ -104,9 +104,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def add_options(self, rule, level):
         options = SubElement(rule, 'options')
         ops = ""
-        if self.no_full_log:
+        if self.no_full_log == 'yes':
             ops = "no_full_log"
-        if self.alert_by_email and (level in self.email_levels):
+        if self.alert_by_email == 'yes' and (level in self.email_levels):
             ops = ops + ",alert_by_email"
         options.text = ops
 
