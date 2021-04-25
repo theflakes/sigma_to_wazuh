@@ -26,20 +26,20 @@ from ruamel.yaml import YAML
 
 class BuildRules(object):
     def __init__(self):
-        configParser = configparser.RawConfigParser()   
+        self.config = configparser.ConfigParser()   
         configFilePath = r'./config.ini'
-        configParser.read(configFilePath)
-        self.rules_link = configParser.get('sigma', 'rules_link')
-        self.low = configParser.get('levels', 'low')
-        self.medium = configParser.get('levels', 'medium')
-        self.high = configParser.get('levels', 'high')
-        self.critical = configParser.get('levels', 'critical')
-        self.no_full_log = configParser.get('options', 'no_full_log')
-        self.alert_by_email = configParser.get('options', 'alert_by_email')
-        self.email_levels = configParser.get('options', 'email_levels')
-        self.rule_id_start = int(configParser.get('options', 'rule_id_start'))
-        self.rule_id = int(configParser.get('options', 'rule_id_start'))
-        self.out_file = configParser.get('sigma', 'out_file')
+        self.config.read(configFilePath)
+        self.rules_link = self.config.get('sigma', 'rules_link')
+        self.low = self.config.get('levels', 'low')
+        self.medium = self.config.get('levels', 'medium')
+        self.high = self.config.get('levels', 'high')
+        self.critical = self.config.get('levels', 'critical')
+        self.no_full_log = self.config.get('options', 'no_full_log')
+        self.alert_by_email = self.config.get('options', 'alert_by_email')
+        self.email_levels = self.config.get('options', 'email_levels')
+        self.rule_id_start = int(self.config.get('options', 'rule_id_start'))
+        self.rule_id = int(self.config.get('options', 'rule_id_start'))
+        self.out_file = self.config.get('sigma', 'out_file')
         self.root = self.create_root()
         # monkey patching prettify
         # reference: https://stackoverflow.com/questions/15509397/custom-indent-width-for-beautifulsoup-prettify
@@ -70,9 +70,15 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         rule.set('level', self.get_level(level))
         return rule
 
-    def add_logic(self, rule, field, negate, value):
+    def convert_field_name(self, product, field):
+        if product in self.config.sections():
+            if field in self.config[product]:
+                return self.config[product][field]
+        return "full_log" # target full log if we cannot find the field
+
+    def add_logic(self, rule, product, field, negate, value):
         logic = SubElement(rule, 'field')
-        logic.set('name', "data." + field)
+        logic.set('name', self.convert_field_name(product, field))
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
         if value.endswith(' '):
@@ -261,7 +267,8 @@ class ParseSigmaRules(object):
             logic = self.handle_list(value)
         return field, logic
 
-    def handle_one_of_them(self, rules, rule, detection, sigma_rule, sigma_rule_link):
+    def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
+                            sigma_rule_link, product):
         rules.root.remove(rule)
         rules.rule_id -= 1
         if isinstance(detection, dict):
@@ -271,10 +278,10 @@ class ParseSigmaRules(object):
                     for x, y in v.items():
                         rule = rules.create_rule(sigma_rule, sigma_rule_link)
                         field, logic = self.convert_transforms(x, y)
-                        self.is_dict_or_not(logic, rules, rule, field, "no")
+                        self.is_dict_or_not(logic, rules, rule, product, field, "no")
 
-    def handle_keywords(self, rules, rule, keywords, sigma_rule, 
-                        sigma_rule_link, logic, negate):
+    def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, 
+                        product, logic, negate):
         """
             A condition set as keywords will have a list of fields to look for those keywords in.
         """
@@ -282,40 +289,40 @@ class ParseSigmaRules(object):
             for f in sigma_rule['fields']:
                 if isinstance(logic, list): # if logic is still a list then its contain|all logic
                     for l in logic:
-                        rules.add_logic(rule, f, negate, l)
+                        rules.add_logic(rule, product, f, negate, l)
                 else:
-                    rules.add_logic(rule, f, negate, logic)
+                    rules.add_logic(rule, product, f, negate, logic)
                 rule = rules.create_rule(sigma_rule, sigma_rule_link)
             rules.root.remove(rule)
             rules.rule_id -= 1
-        else:
-            rules.add_logic(rule, "full_log", negate, logic)
+        else: # field(s) were not specified, so target full log
+            rules.add_logic(rule, product, "full_log", negate, logic)
 
-    def is_dict_logic(self, values, rules, rule, negate):
+    def is_dict_logic(self, values, rules, product, rule, negate):
         for k, v in values.items():
             if isinstance(v, dict):
-                self.is_dict_logic(v, rules, rule, negate)
+                self.is_dict_logic(v, rules, product, rule, negate)
             else:
-                rules.add_logic(rule, k, negate, v)
+                rules.add_logic(rule, product, k, negate, v)
 
-    def is_dict_or_not(self, logic, rules, rule, field, negate):
+    def is_dict_or_not(self, logic, rules, rule, product, field, negate):
         if isinstance(logic, dict):
-            self.is_dict_logic(logic, rules, rule, negate)
+            self.is_dict_logic(logic, rules, product, rule, negate)
         else:
             if isinstance(logic, list): # if logic is still a list then its contain|all logic
                 for l in logic:
-                    rules.add_logic(rule, field, negate, self.fixup_logic(l))
+                    rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
             else:
-                rules.add_logic(rule, field, negate, logic)
+                rules.add_logic(rule, product, field, negate, logic)
 
     def handle_fields(self, rules, rule, token, negate, is_or, sigma_rule, 
-                    sigma_rule_link, detection, all_logic):
+                        sigma_rule_link, detection, all_logic, product):
         if negate:
-            n = negate.pop()
+            neg = negate.pop()
             if negate and negate[-1] == '(':
-                negate.append(n)
+                negate.append(neg)
         else:
-            n = "no"
+            neg = "no"
 
         detections = self.get_detection(detection, token)
 
@@ -327,11 +334,17 @@ class ParseSigmaRules(object):
             if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
                 all_logic.append(logic)
                 if k == 'keywords':
-                    self.handle_keywords(rules, rule, v, sigma_rule, sigma_rule_link, logic, n)
+                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, neg)
                 else:
-                    self.is_dict_or_not(logic, rules, rule, field, n)
+                    self.is_dict_or_not(logic, rules, rule, product, field, neg)
 
         return False, negate, all_logic
+
+    def get_product(self, sigma_rule):
+        if 'logsource' in sigma_rule and 'product' in sigma_rule['logsource']:
+            return sigma_rule['logsource']['product'].lower()
+        else:
+            return ""
 
     def handle_tokens(self, rules, tokens, sigma_rule, sigma_rule_link, rule_path):
         """
@@ -345,6 +358,7 @@ class ParseSigmaRules(object):
         is_or = False   # or logic is not supported between logic statements in a Wazuh rule
         negate = []     # stack to track negation logic
         all_logic =[]   # track all logic used in a rule to ensure a rule does not contain duplicate logic
+        product = self.get_product(sigma_rule)
         rule = rules.create_rule(sigma_rule, sigma_rule_link)
         for token in tokens:
             if token == '(':
@@ -371,12 +385,12 @@ class ParseSigmaRules(object):
                     negate.append("yes")
             elif token.lower() == '1_of_them':
                 self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
-                                        sigma_rule, sigma_rule_link)
+                                        sigma_rule, sigma_rule_link, product)
             else:
-                is_or, negate, all_logic = self.handle_fields(rules, rule, token,negate, is_or, 
+                is_or, negate, all_logic = self.handle_fields(rules, rule, token, negate, is_or, 
                                                             sigma_rule, sigma_rule_link, 
                                                             sigma_rule['detection'][token], 
-                                                            all_logic)
+                                                            all_logic, product)
 
 
 class TrackStats(object):
@@ -450,15 +464,15 @@ def main():
         #print(rule)
 
         # build the URL to the sigma rule, handle relative paths
-        partial_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/')
+        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/')
 
         if isinstance(conditions, list):
             for condition in conditions: # create new rule for each condition
                 tokens = condition.strip().split(' ')
-                convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_path, rule)
+                convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
         else:
             tokens = conditions.strip().split(' ')
-            convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_path, rule)
+            convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
 
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
