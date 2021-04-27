@@ -1,6 +1,8 @@
 # sigma_to_wazuh
 Convert Sigma rules to Wazuh rules
 
+NOT READY FOR PRODUCTION!
+
 ## Overview:
 My initial attempt at creating a Sigma to Wazuh rule converter.
 
