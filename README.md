@@ -8,7 +8,7 @@ My initial attempt at creating a Sigma to Wazuh rule converter.
 
 Still a long ways to go. At the least, I hope to be able to convert ~70% of the Sigma rule base without needing any manual fixups.
 
-Rule conversion needs to check the Sigma detection logic for several different data type used in differing orders:
+Rule conversion needs to check the Sigma detection logic for several different nested data types:
 - dictionaries
 - lists
 - single value
