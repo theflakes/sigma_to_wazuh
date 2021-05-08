@@ -8,7 +8,10 @@ My initial attempt at creating a Sigma to Wazuh rule converter.
 
 Still a long ways to go. At the least, I hope to be able to convert ~70% of the Sigma rule base without needing any manual fixups.
 
-NOTE: Due to OR logic limitations in Wazuh rules, one Sigma rule can produce more than one Wazuh rule.
+NOTE: 
+- Due to OR logic limitations in Wazuh rules, one Sigma rule can produce more than one Wazuh rule.
+- PCRE case insenstivie logic is used for all logic.
+- Sigma field name to Wazuh field name conversion is mapped out in the config.ini file based upon the Sigma rule's [logsource][product] field. If a field is not presently mapped, the Wazuh "full_log" field will be used.
 
 Rule conversion needs to check the Sigma detection logic for several different nested data types:
 - dictionaries
