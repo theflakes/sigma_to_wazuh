@@ -211,7 +211,7 @@ class ParseSigmaRules(object):
 
     def fixup_condition(self, condition):
         """
-            Replace spaces with _ when the words constitue a logic operation.
+            Replace spaces with _ when the words constitute a logic operation.
             Allows for easier tokenization.
         """
         if isinstance(condition, list):
@@ -234,20 +234,6 @@ class ParseSigmaRules(object):
     def remove_wazuh_rule(self, rules, rule):
         rules.root.remove(rule) # destroy the extra rule that is created
         rules.rule_id -= 1      # decrement the current rule id as last rule was removed
-
-    def get_detection(self, detection, token):
-        values = {}
-        if isinstance(detection, list):
-            for item in detection: # handle detection dicts
-                if isinstance(item, dict):
-                    for k, v in item.items():
-                        values[k] = v
-                    continue
-                values[token] = detection # handle one deep detections
-            return values
-        for k, v in detection.items():
-            values[k] = v
-        return values
 
     def fixup_logic(self, logic):
         logic = str(logic)
@@ -314,6 +300,20 @@ class ParseSigmaRules(object):
                 rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
             return
         rules.add_logic(rule, product, field, negate, logic)
+
+    def get_detection(self, detection, token):
+        values = {}
+        if isinstance(detection, list):
+            for d in detection:
+                if isinstance(d, dict):
+                    for k, v in d.items():
+                        values[k] = v
+                    continue
+                values[token] = detection # handle one deep detections
+            return values
+        for k, v in detection.items():
+            values[k] = v
+        return values
 
     def handle_fields(self, rules, rule, token, negate, is_or, sigma_rule, 
                         sigma_rule_link, detection, all_logic, product):
@@ -388,6 +388,7 @@ class ParseSigmaRules(object):
                 self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
                                         sigma_rule, sigma_rule_link, product)
                 continue
+            #print(sigma_rule_link)
             is_or, negate, all_logic = self.handle_fields(rules, rule, token, negate, is_or, 
                                                         sigma_rule, sigma_rule_link, 
                                                         sigma_rule['detection'][token], 
