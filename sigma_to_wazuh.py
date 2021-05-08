@@ -302,6 +302,10 @@ class ParseSigmaRules(object):
         rules.add_logic(rule, product, field, negate, logic)
 
     def get_detection(self, detection, token):
+        """
+            Break appart detection logic into dictionaries for use in creating the Wazuh logic.
+            e.g. {"fieldname|<startswith|endswith|etc.>": ["something to look for", "another thing to look for"]}
+        """
         values = {}
         if isinstance(detection, list):
             for d in detection:
