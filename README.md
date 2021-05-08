@@ -16,6 +16,7 @@ NOTE:
 Rule conversion needs to check the Sigma detection logic for several different nested data types:
 - dictionaries
 - lists
+- lists of dictionaries
 - single value
 - dictionaries in dictionaries
 - etc.
