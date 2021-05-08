@@ -20,6 +20,8 @@ There are other things that need to be accounted for:
 - Field lists to run detection logic against
 - "all of", "one of", etc.
 
+Clone the Sigma rules repository and point the "directory" variable to the Sigma rules cloned repository directory location.
+
 ## Required Python packages:  
 - lxml
 - BeautifulSoup 4: bs4
