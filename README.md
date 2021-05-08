@@ -44,6 +44,23 @@ Wazuh HIDS: [https://wazuh.com](https://wazuh.com)
 - Error loading some rules needing some cleanup
 - Any deprecated rules
 
+Example summary output:
+```
+***************************************************************************
+ Number of Sigma Experimental rules skipped: 0
+    Number of Sigma TIMEFRAME rules skipped: 22
+        Number of Sigma PAREN rules skipped: 98
+         Number of Sigma NEAR rules skipped: 25
+        Number of Sigma ERROR rules skipped: 55
+                  Total Sigma rules skipped: 200
+                Total Sigma rules converted: 772
+-------------------------------------------------------
+                  Total Wazuh rules created: 1100
+-------------------------------------------------------
+                          Total Sigma rules: 972
+                    Sigma rules converted %: 79.42
+***************************************************************************
+```
 Example Sigma rule conversions:
 ```
 SIGMA RULE:
