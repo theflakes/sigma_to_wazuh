@@ -1,0 +1,193 @@
+ERROR loading Sigma rule: ../sigma/rules/proxy/proxy_ursnif_malware.yml
+SKIPPED Sigma rule: ../sigma/rules/proxy/proxy_ua_suspicious.yml
+SKIPPED Sigma rule: ../sigma/rules/web/web_multiple_suspicious_resp_codes_single_source.yml
+SKIPPED Sigma rule: ../sigma/rules/network/net_dns_c2_detection.yml
+SKIPPED Sigma rule: ../sigma/rules/network/net_high_null_records_requests_rate.yml
+SKIPPED Sigma rule: ../sigma/rules/network/net_susp_network_scan.yml
+SKIPPED Sigma rule: ../sigma/rules/network/net_high_txt_records_requests_rate.yml
+ERROR loading Sigma rule: ../sigma/rules/network/net_high_dns_bytes_out.yml
+ERROR loading Sigma rule: ../sigma/rules/network/net_high_dns_requests_rate.yml
+SKIPPED Sigma rule: ../sigma/rules/network/zeek/zeek-dce_rpc_domain_user_enumeration.yml
+ERROR loading Sigma rule: ../sigma/rules/compliance/cleartext_protocols.yml
+SKIPPED Sigma rule: ../sigma/rules/apt/apt_silence_downloader_v3.yml
+ERROR loading Sigma rule: ../sigma/rules/linux/lnx_security_tools_disabling.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/macos_clear_system_logs.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/macos_create_hidden_account.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/lnx_setgid_setuid.yml
+ERROR loading Sigma rule: ../sigma/rules/linux/lnx_system_info_discovery.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/lnx_binary_padding.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/lnx_susp_failed_logons_single_source.yml
+ERROR loading Sigma rule: ../sigma/rules/linux/lnx_network_service_scanning.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/macos_binary_padding.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/macos_network_service_scanning.yml
+ERROR loading Sigma rule: ../sigma/rules/linux/lnx_sudo_cve_2019_14287.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/macos_gui_input_capture.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/lnx_system_shutdown_reboot.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/lnx_shell_priv_esc_prep.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/macos_disable_security_tools.yml
+ERROR loading Sigma rule: ../sigma/rules/linux/auditd/lnx_auditd_cve_2021_3156_sudo_buffer_overflow.yml
+SKIPPED Sigma rule: ../sigma/rules/linux/modsecurity/modsec_mulitple_blocks.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_ec2_download_userdata.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_enum_listing.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_rds_public_db_restore.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_update_login_profile.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_ec2_vm_export_failure.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_guardduty_disruption.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_ec2_startup_script_change.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_iam_backdoor_users_keys.yml
+SKIPPED Sigma rule: ../sigma/rules/cloud/aws_rds_change_master_password.yml
+SKIPPED Sigma rule: ../sigma/rules/generic/generic_brute_force.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/other/win_tool_psexec.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/other/win_rare_schtask_creation.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/other/win_wmi_persistence.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/malware/win_mal_blue_mockingbird.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/file_event/sysmon_hack_dumpert.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/file_event/win_susp_multiple_files_renamed_or_deleted.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/file_event/sysmon_non_priv_program_files_move.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/file_event/sysmon_webshell_creation_detect.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/file_event/sysmon_office_persistence.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_invoke_obfuscation_obfuscated_iex.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_CL_Mutexverifiers_LOLScript_v2.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_CL_Invocation_LOLScript_v2.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_cmdline_specific_comb_methods.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/powershell/win_powershell_web_request.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_prompt_credentials.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_suspicious_invocation_generic.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_psattack.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/powershell/powershell_clear_powershell_history.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_access/sysmon_malware_verclsid_shellcode.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_access/sysmon_in_memory_assembly_execution.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/image_load/sysmon_mimikatz_inmemory_detection.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/image_load/sysmon_tttracer_mod_load.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/image_load/sysmon_suspicious_dbghelp_dbgcore_load.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/image_load/sysmon_wsman_provider_image_load.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/registry_event/sysmon_stickykey_like_backdoor.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/registry_event/sysmon_sysinternals_eula_accepted.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/registry_event/sysmon_registry_persistence_search_order.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/registry_event/sysmon_apt_pandemic.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/registry_event/sysmon_dns_serverlevelplugindll.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/registry_event/sysmon_asep_reg_keys_modification.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/registry_event/sysmon_susp_mic_cam_access.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/registry_event/sysmon_uac_bypass_eventvwr.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_impacket_lateralization.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_apt_taidoor.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_use_of_vsjitdebugger_bin.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_tracker_execution.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_regedit_export_keys.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_multiple_suspicious_cli.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/sysmon_long_powershell_commandline.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_susp_winrm_AWL_bypass.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_pester.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_powershell_enc_cmd.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_spn_enum.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/sysmon_logon_scripts_userinitmprlogonscript_proc.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_malware_dridex.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_attrib_hiding_files.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_apt_lazarus_loader.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_turla_commands.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_powershell_parent_process.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_slingshot.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_curl_download.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_comsvcs_procdump.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_procdump_lsass.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_syncappvpublishingserver_exe.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_ftp.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_fsutil_usage.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_commands_recon_activity.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_powershell_defender_exclusion.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_webshell_detection.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_renamed_procdump.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_empiremonkey.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_renamed_jusched.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_local_system_owner_account_discovery.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_silenttrinity_stage_use.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_chafer_mar18.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_dnscat2_powershell_implementation.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_copy_lateral_movement.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_calc.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_non_priv_reg_or_ps.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_exploit_cve_2020_1048.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/sysmon_always_install_elevated_windows_installer.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_csi.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_unidentified_nov_18.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_exploit_cve_2019_1388.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_eventlog_clear.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_rasautou_dll_execution.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_netsh_fw_add_susp_image.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_renamed_paexec.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_control_panel_item.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_using_sc_to_change_sevice_image_path_by_non_admin.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_gallium.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_shimcache_flush.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_apt_wocao.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_plugx_susp_exe_locations.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_runonce_execution.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_hktl_createminidump.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/process_creation/win_mal_adwind.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/sysmon_accesschk_usage_after_priv_escalation.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_desktopimgdownldr.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_file_characteristics.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_apt_unc2452_cmds.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_svchost_no_cli.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_powershell_dll_execution.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/process_creation/win_susp_findstr.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/sysmon/sysmon_pingback_backdoor.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_susp_time_modification.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_mal_creddumper.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_metasploit_or_impacket_smb_psexec_service_install.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_var++_services.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_clip+_services.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_use_clip_services.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_alert_ad_user_backdoors.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_susp_add_sid_history.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_meterpreter_or_cobaltstrike_getsystem_service_installation.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_obfuscated_iex_services.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_use_mshta_services.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_apt_apt29_tor.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_stdin+_services.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_root_certificate_installed.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_rare_schtasks_creations.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_stdin_services.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_mal_service_installs.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_alert_ruler.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_alert_active_directory_user_control.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_powershell_script_installed_as_service.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_rare_service_installs.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_net_ntlm_downgrade.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_susp_msmpeng_crash.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_tap_driver_installation.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_var+_services.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_compress_services.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_global_catalog_enumeration.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_susp_samr_pwset.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_software_discovery.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_camera_microphone_access.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_rundll_services.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_user_added_to_local_administrators.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_invoke_obfuscation_via_use_rundll32_services.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_susp_failed_logon_source.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/builtin/win_moriya_rootkit.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_rdp_reverse_tunnel.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/builtin/win_susp_failed_logons_single_source.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/dns_query/sysmon_possible_dns_rebinding.yml
+ERROR loading Sigma rule: ../sigma/rules/windows/network_connection/sysmon_regsvr32_network_activity.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/network_connection/sysmon_malware_backconnect_ports.yml
+SKIPPED Sigma rule: ../sigma/rules/windows/create_stream_hash/sysmon_ads_executable.yml
+
+
+***************************************************************************
+ Number of Sigma Experimental rules skipped: 0
+    Number of Sigma TIMEFRAME rules skipped: 22
+        Number of Sigma PAREN rules skipped: 98
+         Number of Sigma NEAR rules skipped: 25
+        Number of Sigma ERROR rules skipped: 55
+                  Total Sigma rules skipped: 200
+                Total Sigma rules converted: 772
+-------------------------------------------------------
+                  Total Wazuh rules created: 1100
+-------------------------------------------------------
+                          Total Sigma rules: 972
+                    Sigma rules converted %: 79.42
+***************************************************************************
+
+
