@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 *.xml
 *.yaml
+*.txt
 test.py
 __pycache__/
 *.py[cod]
