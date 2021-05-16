@@ -13,8 +13,8 @@ import xml.etree.ElementTree as etree
 class WazuhRules(object):
     def __init__(self):
         self.rule_dirs = ['/var/ossec/ruleset/rules', '/var/ossec/etc/rules']
-        self.rule_files = self.get_wazuh_rule_files()
-        self.rules = self.load_wazuh_rules()
+        self.rule_files = self.get_wazuh_rule_files() # array containing all file absolute paths
+        self.rules = self.load_wazuh_rules() # array of all rule files loaded from files stored ElementTrees
 
     def get_wazuh_rule_files(self):
         fname = []
@@ -27,7 +27,7 @@ class WazuhRules(object):
     def load_wazuh_rule(self, rule_file):
         try:
             with open(rule_file) as file:
-                raw_xml = '<rules>' + file.read() + '</rules>'
+                raw_xml = '<rules>' + file.read() + '</rules>' # wrap file contents in outer tags so we can load it as one XML file
             return etree.ElementTree(etree.fromstring(raw_xml))
         except Exception as e:
             print("ERROR: unable to load %si -> %s" % (rule_file, e))
@@ -44,11 +44,14 @@ class WazuhRules(object):
 
 class Report(object):
     def __init__(self, rules):
-        self.csv = []
-        self.final_csv = []
-        self.rules = rules
+        self.tsv = [] # initial array of per rule tsv entries
+        self.final_csv = [] # final result of parsing all the inforamtion we want to be written to a file
+        self.rules = rules # rules array passed in from WazuhRules class
 
     def init_print_vars(self):
+        """
+            (Re)initialize variables used in the parse_rules loop
+        """
         ifsid = None
         rid = None
         level = None
@@ -57,7 +60,7 @@ class Report(object):
         return rid, level, description, ifsid, fields
 
     def parse_rules(self):
-        self.csv.append('"id"\t"level"\t"description"\t"fields"\t"parents"')
+        self.tsv.append('"id"\t"level"\t"description"\t"fields"\t"parents"')
         for r in self.rules:
             rid, level, description, ifsid, fields = self.init_print_vars()
             new_rule = 0
@@ -65,7 +68,7 @@ class Report(object):
                 if e.tag == 'rule':
                     new_rule += 1
                     if new_rule == 2:
-                        self.csv.append('"{}"\t"{}"\t"{}"\t"{}"\t"{}"'.format(rid, level, description, fields, ifsid))
+                        self.tsv.append('"{}"\t"{}"\t"{}"\t"{}"\t"{}"'.format(rid, level, description, fields, ifsid))
                         rid, level, description, ifsid, fields = self.init_print_vars()
                         new_rule = 0
                     rid = e.attrib.get('id')
@@ -79,10 +82,10 @@ class Report(object):
 
     def find_children(self):
         self.final_csv.append('"id","level","description","fields","parents","children"')
-        for outer in self.csv[1:]:
+        for outer in self.tsv[1:]:
             children = []
             rule_id = outer.split("\t")[0]
-            for inner in self.csv[1:]:
+            for inner in self.tsv[1:]:
                 fields = inner.split("\t")
                 ifsids = [s.strip() for s in fields[4].split(',')]
                 if rule_id in ifsids:
