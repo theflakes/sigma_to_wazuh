@@ -59,8 +59,8 @@ Example summary output:
     Number of Sigma TIMEFRAME rules skipped: 22
         Number of Sigma PAREN rules skipped: 0
          Number of Sigma NEAR rules skipped: 25
-         Number of Sigma 1_of rules skipped: 9
-       Number of Sigma all_of rules skipped: 16
+         Number of Sigma 1_OF rules skipped: 9
+       Number of Sigma ALL_OF rules skipped: 16
          Number of Sigma HARD skipped rules: 2
         Number of Sigma ERROR rules skipped: 55
 -------------------------------------------------------
