@@ -47,6 +47,8 @@ Sigma Rules: [https://github.com/SigmaHQ/sigma](https://github.com/SigmaHQ/sigma
 Wazuh HIDS: [https://wazuh.com](https://wazuh.com)
 
 ## Rule logic not yet converted:
+- Wazuh rule "if_sid" dependencies not yet accounted for
+- Wazuh decoded_as, if_group, and other logic sometimes required for a rule to be run against log not yet accounted for
 - Any using Sigma near logic
 - Any using a timeframe condition
 - Error loading some rules needing some cleanup
