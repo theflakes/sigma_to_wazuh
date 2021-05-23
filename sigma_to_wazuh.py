@@ -2,7 +2,7 @@
 """
     Author: Brian Kellogg
 
-    Purpose: Sigma to Wazuh log parser.
+    Purpose: Sigma to Wazuh rule converter.
 
     References:
         Sigma: https://github.com/SigmaHQ/sigma
