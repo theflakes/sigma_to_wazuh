@@ -355,23 +355,25 @@ class ParseSigmaRules(object):
         return ""
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule, 
-                        sigma_rule_link, detection, product):
+                        sigma_rule_link, detection, product, all_logic):
         detections = self.get_detection(detection, token)
 
         for k, v in detections.items():
             field, logic = self.convert_transforms(k, v)
-            #if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
-                #all_logic.append(logic)
-            if k == 'keywords':
-                self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate)
-                continue
-            self.is_dict_list_or_not(logic, rules, rule, product, field, negate)
+            if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
+                all_logic.append(logic)
+                if k == 'keywords':
+                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate)
+                    continue
+                self.is_dict_list_or_not(logic, rules, rule, product, field, negate)
+        
+        return all_logic
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
+        all_logic = []  # track all the logic used in a single rule to ensure we don't duplicat it
+                        # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
         product = self.get_product(sigma_rule)
-        print(logic_paths)
         for path in logic_paths:
-            print(path)
             negate = "no"
             rule = rules.create_rule(sigma_rule, sigma_rule_link)
             for p in path:
@@ -382,10 +384,10 @@ class ParseSigmaRules(object):
                 if p == "not":
                     negate = "yes"
                     continue
-                self.handle_fields(rules, rule, p, negate, 
-                                    sigma_rule, sigma_rule_link, 
-                                    sigma_rule['detection'][p], 
-                                    product)
+                all_logic = self.handle_fields(rules, rule, p, negate, 
+                                                sigma_rule, sigma_rule_link, 
+                                                sigma_rule['detection'][p], 
+                                                product, all_logic)
                 negate = "no"
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
@@ -395,9 +397,8 @@ class ParseSigmaRules(object):
         level = 0           # track paren netsting levels
         paren_set = 0       # track number of paren sets
         is_or = False       # did we bump into an OR
-        print(sigma_rule['description'])
+        all_logic = []      # track all logic used so we do not duplicate it
         tokens = list(filter(None, tokens)) # remove all Null entries
-        print("Tokens: %s" % tokens)
         for t in tokens:
             if t.lower() == 'not':
                 if negate:

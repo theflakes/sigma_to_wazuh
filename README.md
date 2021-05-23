@@ -58,16 +58,19 @@ Example summary output:
 ***************************************************************************
  Number of Sigma Experimental rules skipped: 0
     Number of Sigma TIMEFRAME rules skipped: 22
-        Number of Sigma PAREN rules skipped: 98
+        Number of Sigma PAREN rules skipped: 0
          Number of Sigma NEAR rules skipped: 25
+         Number of Sigma 1_of rules skipped: 9
+       Number of Sigma all_of rules skipped: 16
         Number of Sigma ERROR rules skipped: 55
-                  Total Sigma rules skipped: 200
-                Total Sigma rules converted: 772
 -------------------------------------------------------
-                  Total Wazuh rules created: 1100
+                  Total Sigma rules skipped: 105
+                Total Sigma rules converted: 878
 -------------------------------------------------------
-                          Total Sigma rules: 972
-                    Sigma rules converted %: 79.42
+                  Total Wazuh rules created: 1311
+-------------------------------------------------------
+                          Total Sigma rules: 983
+                    Sigma rules converted %: 89.32
 ***************************************************************************
 ```
 Example Sigma rule conversions:
@@ -115,9 +118,13 @@ level: high
 
 WAZUH RULE(s):
 -----------------------------------------
-<rule id="1000559" level="13">
+<rule id="1000648" level="13">
     <!--https://github.com/SigmaHQ/sigma/tree/master/rules/windows/process_creation/win_susp_compression_params.yml-->
     <!--Sigma Rule Author: Florian Roth, Samir Bousseaden-->
+    <!--Description: Detects suspicious command line arguments of common data compression tools-->
+    <!--Date: 2019/10/15-->
+    <!--Status: experimental-->
+    <!--ID: 27a72a60-7e5e-47b1-9d17-909c9abafdcd-->
     <mitre>
         <id>attack.collection</id>
         <id>attack.t1560.001</id>
@@ -172,9 +179,12 @@ level: high
 
 WAZUH RULE(s):
 -----------------------------------------
-<rule id="1000135" level="13">
+<rule id="1000141" level="13">
     <!--https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml-->
     <!--Sigma Rule Author: Samir Bousseaden, @neu5ron-->
+    <!--Description: detects execution of psexec or paexec with renamed service name, this rule helps to filter out the noise if psexec is used for legit purposes or if attacker uses a different psexec client other than sysinternal one-->
+    <!--Date: 2020/04/02-->
+    <!--ID: f1b3a22a-45e6-4004-afb5-4291f9c21166-->
     <mitre>
         <id>attack.lateral_movement</id>
         <id>attack.t1077</id>
@@ -229,9 +239,13 @@ tags:
 
 WAZUH RULE(s):
 -----------------------------------------
-<rule id="1000011" level="13">
+<rule id="1000014" level="13">
     <!--https://github.com/SigmaHQ/sigma/tree/master/rules/proxy/proxy_cobalt_amazon.yml-->
     <!--Sigma Rule Author: Markus Neis-->
+    <!--Description: Detects Malleable Amazon Profile-->
+    <!--Date: 2019/11/12-->
+    <!--Status: experimental-->
+    <!--ID: 953b895e-5cc9-454b-b183-7f3db555452e-->
     <mitre>
         <id>attack.defense_evasion</id>
         <id>attack.command_and_control</id>
@@ -247,9 +261,13 @@ WAZUH RULE(s):
     <field name="full_log" negate="no" type="pcre2">(?i)www\.amazon\.com</field>
     <field name="full_log" negate="no" type="pcre2">(?i)(?:=csm\-hit=s\-24KU11BB82RZSYGJ3BDK\|1419899012996)$</field>
 </rule>
-<rule id="1000012" level="13">
+<rule id="1000015" level="13">
     <!--https://github.com/SigmaHQ/sigma/tree/master/rules/proxy/proxy_cobalt_amazon.yml-->
     <!--Sigma Rule Author: Markus Neis-->
+    <!--Description: Detects Malleable Amazon Profile-->
+    <!--Date: 2019/11/12-->
+    <!--Status: experimental-->
+    <!--ID: 953b895e-5cc9-454b-b183-7f3db555452e-->
     <mitre>
         <id>attack.defense_evasion</id>
         <id>attack.command_and_control</id>
