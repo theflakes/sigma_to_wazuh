@@ -47,7 +47,6 @@ Sigma Rules: [https://github.com/SigmaHQ/sigma](https://github.com/SigmaHQ/sigma
 Wazuh HIDS: [https://wazuh.com](https://wazuh.com)
 
 ## Rule logic not yet converted:
-- Any containing parentheses
 - Any using Sigma near logic
 - Any using a timeframe condition
 - Error loading some rules needing some cleanup
@@ -62,15 +61,16 @@ Example summary output:
          Number of Sigma NEAR rules skipped: 25
          Number of Sigma 1_of rules skipped: 9
        Number of Sigma all_of rules skipped: 16
+         Number of Sigma HARD skipped rules: 2
         Number of Sigma ERROR rules skipped: 55
 -------------------------------------------------------
-                  Total Sigma rules skipped: 105
-                Total Sigma rules converted: 878
+                  Total Sigma rules skipped: 107
+                Total Sigma rules converted: 876
 -------------------------------------------------------
-                  Total Wazuh rules created: 1311
+                  Total Wazuh rules created: 1309
 -------------------------------------------------------
                           Total Sigma rules: 983
-                    Sigma rules converted %: 89.32
+                    Sigma rules converted %: 89.11
 ***************************************************************************
 ```
 Example Sigma rule conversions:

@@ -209,6 +209,7 @@ class ParseSigmaRules(object):
         configParser.read(configFilePath)
         self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
         self.sigma_rules_dir = configParser.get('sigma', 'directory')
+        self.sigma_skip = configParser.get('sigma', 'skip')
         self.sigma_rules = self.get_sigma_rules()
         self.error_count = 0
         self.converted_total = 0
@@ -441,6 +442,7 @@ class TrackStats(object):
         self.paren_skips = 0
         self.timeframe_skips = 0
         self.experimental_skips = 0
+        self.hard_skipped = 0
         self.rules_skipped = 0
         self.one_of_skipped = 0
         self.all_of_skipped = 0
@@ -479,6 +481,7 @@ class TrackStats(object):
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
         print("         Number of Sigma 1_of rules skipped: %s" % self.one_of_skipped)
         print("       Number of Sigma all_of rules skipped: %s" % self.all_of_skipped)
+        print("         Number of Sigma HARD skipped rules: %s" % self.hard_skipped)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
         print("-" * 55)
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
@@ -512,6 +515,12 @@ def main():
                     continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
+
+        if sigma_rule["id"] in convert.sigma_skip:
+            stats.rules_skipped += 1
+            stats.hard_skipped += 1
+            print(" HARD SKIPPED Sigma rule: " + rule)
+            continue
 
         skip_rule = stats.check_for_logic_to_skip(sigma_rule['detection'], conditions)
         if skip_rule:
