@@ -398,7 +398,6 @@ class ParseSigmaRules(object):
         level = 0           # track paren netsting levels
         paren_set = 0       # track number of paren sets
         is_or = False       # did we bump into an OR
-        all_logic = []      # track all logic used so we do not duplicate it
         tokens = list(filter(None, tokens)) # remove all Null entries
         for t in tokens:
             if t.lower() == 'not':
