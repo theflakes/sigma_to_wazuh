@@ -22,6 +22,7 @@ from itertools import tee
 from xml.dom import minidom
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring, ElementTree, parse, dump
 from ruamel.yaml import YAML
+from ruamel.yaml.main import add_implicit_resolver
 
 
 class BuildRules(object):
@@ -80,8 +81,10 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
             spaces at end of logic are being chopped, therefore hacking this fix
         """
+        if value.startswith('(?i)'): # if value start with this, it is a Sigma regex, remove it as it will be added again
+            value = value[4:]
         if value.endswith(' '):
-            return '(?i)(?:' + value + ')'
+            value = '(?:' + value + ')'
         return '(?i)' + value
 
     def add_logic(self, rule, product, field, negate, value):
@@ -124,6 +127,17 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         comment = Comment(self.rules_link + sigma_rule_link)
         rule.append(comment)
 
+    def add_rule_comment(self, rule, misc):
+        comment = Comment(misc.replace('--', ' - ')) # '--' not allowed in XML comment
+        rule.append(comment)
+
+    def add_sigma_rule_references(self, rule, reference):
+        refs = 'References: \n'
+        for r in reference:
+            refs += '\t' + r + '\n'
+        comment = Comment(refs[:-1])
+        rule.append(comment)
+
     def add_description(self, rule, title):
         description = SubElement(rule, 'description')
         description.text = title
@@ -143,6 +157,16 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         # Add rule link and author
         if 'author' in sigma_rule:
             self.add_sigma_author(rule, sigma_rule['author'])
+        if 'description' in sigma_rule:
+            self.add_rule_comment(rule, "Description: " + sigma_rule['description'])
+        if 'date' in sigma_rule:
+            self.add_rule_comment(rule, "Date: " + sigma_rule['date'])
+        if 'status' in sigma_rule:
+            self.add_rule_comment(rule, "Status: " + sigma_rule['status'])
+        if 'id' in sigma_rule:
+            self.add_rule_comment(rule, "ID: " + sigma_rule['id'])
+        #if 'references' in sigma_rule:
+        #    self.add_sigma_rule_references(rule, sigma_rule['references'])
         if 'tags' in sigma_rule:
             self.add_mitre(rule, sigma_rule['tags'])
         self.add_description(rule, sigma_rule['title'])
@@ -218,12 +242,16 @@ class ParseSigmaRules(object):
             return [tok.replace('1 of them', '1_of_them')
                             .replace('all of them', 'all_of_them')
                             .replace('1 of', '1_of')
-                            .replace('all of', 'all_of') 
+                            .replace('all of', 'all_of')\
+                            .replace('(', ' ( ')\
+                            .replace(')', ' ) ')
                             for tok in condition]
         return condition.replace('1 of them', '1_of_them')\
                         .replace('all of them', 'all_of_them')\
                         .replace('1 of', '1_of')\
-                        .replace('all of', 'all_of')
+                        .replace('all of', 'all_of')\
+                        .replace('(', ' ( ')\
+                        .replace(')', ' ) ')
 
     def pairwise(self, iterable):
         "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -250,14 +278,16 @@ class ParseSigmaRules(object):
     def convert_transforms(self, key, value):
         if '|' in key:
             field, transform = key.split('|', 1)
-            if transform == 'contains':
+            if transform.lower() == 'contains':
                 return field, self.handle_list(value)
-            if transform == 'contains|all':
+            if transform.lower() == 'contains|all':
                 return field, value
-            if transform == 'startswith':
+            if transform.lower() == 'startswith':
                 return field, '^(?:' + self.handle_list(value) + ')'
-            if transform == 'endswith':
+            if transform.lower() == 'endswith':
                 return field, '(?:' + self.handle_list(value) + ')$'
+            if transform.lower() == "re":
+                return field, value
         return key, self.handle_list(value)
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
@@ -319,84 +349,89 @@ class ParseSigmaRules(object):
             values[k] = v
         return values
 
-    def handle_fields(self, rules, rule, token, negate, is_or, sigma_rule, 
-                        sigma_rule_link, detection, all_logic, product):
-        neg = "no"
-        if negate:
-            neg = negate.pop()
-            if negate and negate[-1] == '(':
-                negate.append(neg)
-
-        detections = self.get_detection(detection, token)
-
-        if is_or: # or logic requires another Wazuh rule
-            rule = rules.create_rule(sigma_rule, sigma_rule_link)
-
-        for k, v in detections.items():
-            field, logic = self.convert_transforms(k, v)
-            if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
-                all_logic.append(logic)
-                if k == 'keywords':
-                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, neg)
-                    continue
-                self.is_dict_list_or_not(logic, rules, rule, product, field, neg)
-
-        return False, negate, all_logic
-
     def get_product(self, sigma_rule):
         if 'logsource' in sigma_rule and 'product' in sigma_rule['logsource']:
             return sigma_rule['logsource']['product'].lower()
         return ""
 
-    def handle_tokens(self, rules, tokens, sigma_rule, sigma_rule_link, rule_path):
-        """
-            Messy attempt at a Sigma logic condition lexer. I am not good at this yet.
+    def handle_fields(self, rules, rule, token, negate, sigma_rule, 
+                        sigma_rule_link, detection, product):
+        detections = self.get_detection(detection, token)
 
-            Need to be able to handle rules like below:
-            https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
-            The above rule converted to one Wazuh rule would not produce expected detection. 
-        """
-        level = 0       # track logic paren nesting
-        is_or = False   # or logic is not supported between logic statements in a Wazuh rule
-        negate = []     # stack to track negation logic
-        all_logic =[]   # track all logic used in a rule to ensure a rule does not contain duplicate logic
+        for k, v in detections.items():
+            field, logic = self.convert_transforms(k, v)
+            #if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
+                #all_logic.append(logic)
+            if k == 'keywords':
+                self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate)
+                continue
+            self.is_dict_list_or_not(logic, rules, rule, product, field, negate)
+
+    def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
         product = self.get_product(sigma_rule)
-        rule = rules.create_rule(sigma_rule, sigma_rule_link)
-        for token in tokens:
-            if token == '(':
-                level += 1
-                if negate:
-                    last = negate.pop()
-                    negate.append('(')
-                    negate.append(last)
-                continue
-            if token == ')':
-                if len(negate) > 1 and negate[-2] == '(':
-                    negate.pop()
-                    negate.pop()
-                level -= 1
-                continue
-            if token.lower() == 'or':
-                is_or = True
-                all_logic =[] # clear logic list as we will be creating a new rule to handle OR logic
-                continue
-            if token.lower() == 'and': continue
-            if token.lower() == 'not':
-                if negate:
-                    if negate[-1] != "yes":
-                        negate.append('yes')
-                    continue
-                negate.append("yes")
-                continue
-            if token.lower() == '1_of_them':
-                self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
+        print(logic_paths)
+        for path in logic_paths:
+            print(path)
+            negate = "no"
+            rule = rules.create_rule(sigma_rule, sigma_rule_link)
+            for p in path:
+                if p.lower() == '1_of_them':
+                    self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
                                         sigma_rule, sigma_rule_link, product)
+                    break
+                if p == "not":
+                    negate = "yes"
+                    continue
+                self.handle_fields(rules, rule, p, negate, 
+                                    sigma_rule, sigma_rule_link, 
+                                    sigma_rule['detection'][p], 
+                                    product)
+                negate = "no"
+
+    def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
+        logic_paths = []    # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
+        path = []           # minimum logic for one AND path
+        negate = False      # are we to negate the logic?
+        level = 0           # track paren netsting levels
+        paren_set = 0       # track number of paren sets
+        is_or = False       # did we bump into an OR
+        print(sigma_rule['description'])
+        tokens = list(filter(None, tokens)) # remove all Null entries
+        print("Tokens: %s" % tokens)
+        for t in tokens:
+            if t.lower() == 'not':
+                if negate:
+                    negate = False
+                else:
+                    negate = True
                 continue
-            #print(sigma_rule_link)
-            is_or, negate, all_logic = self.handle_fields(rules, rule, token, negate, is_or, 
-                                                        sigma_rule, sigma_rule_link, 
-                                                        sigma_rule['detection'][token], 
-                                                        all_logic, product)
+            if t == '(':
+                level += 1
+                continue
+            if t == ')':
+                negate = False
+                level -= 1
+                paren_set += 1
+                continue
+            if t.lower() == 'or':
+                is_or = True
+                continue
+            if t.lower() == 'and': 
+                is_or = False
+                continue
+            if is_or:
+                logic_paths.append(path)
+                if paren_set > 0:
+                    path = []
+                else:
+                    path = path[:-1]
+            if negate:
+                if path and path[-1] != 'not':
+                    path.append('not')
+            path.append(t)
+        logic_paths.append(path)
+
+        self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
 class TrackStats(object):
@@ -406,6 +441,8 @@ class TrackStats(object):
         self.timeframe_skips = 0
         self.experimental_skips = 0
         self.rules_skipped = 0
+        self.one_of_skipped = 0
+        self.all_of_skipped = 0
 
     def check_for_logic_to_skip(self, detection, condition):
         """
@@ -416,18 +453,18 @@ class TrackStats(object):
         if '|' in condition:
             skip = True
             self.near_skips += 1
-        if '(' in condition:
-            skip = True
-            self.paren_skips += 1
+        #if condition.count('(') > 1:
+        #    skip = True
+        #    self.paren_skips += 1
         if 'timeframe' in detection:
             skip = True
             self.timeframe_skips += 1
         if '1_of ' in condition:
             skip = True
-            self.rules_skipped += 1
+            self.one_of_skipped += 1
         if 'all_of' in condition:
             skip = True
-            self.rules_skipped += 1
+            self.all_of_skipped += 1
             
         return skip
 
@@ -439,7 +476,10 @@ class TrackStats(object):
         print("    Number of Sigma TIMEFRAME rules skipped: %s" % self.timeframe_skips)
         print("        Number of Sigma PAREN rules skipped: %s" % self.paren_skips)
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
+        print("         Number of Sigma 1_of rules skipped: %s" % self.one_of_skipped)
+        print("       Number of Sigma all_of rules skipped: %s" % self.all_of_skipped)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
+        print("-" * 55)
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
         print("                Total Sigma rules converted: %s" % sigma_rules_converted)
         print("-" * 55)
@@ -485,10 +525,10 @@ def main():
         if isinstance(conditions, list):
             for condition in conditions: # create new rule for each condition, needs work
                 tokens = condition.strip().split(' ')
-                convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
+                convert.build_logic_paths(wazuh_rules, tokens, sigma_rule, partial_url_path)
             continue
         tokens = conditions.strip().split(' ')
-        convert.handle_tokens(wazuh_rules, tokens, sigma_rule, partial_url_path, rule)
+        convert.build_logic_paths(wazuh_rules, tokens, sigma_rule, partial_url_path)
 
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
