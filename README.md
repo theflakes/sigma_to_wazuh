@@ -61,7 +61,7 @@ Example summary output:
          Number of Sigma NEAR rules skipped: 25
          Number of Sigma 1_OF rules skipped: 9
        Number of Sigma ALL_OF rules skipped: 16
-         Number of Sigma HARD skipped rules: 2
+       Number of Sigma CONFIG rules skipped: 2
         Number of Sigma ERROR rules skipped: 55
 -------------------------------------------------------
                   Total Sigma rules skipped: 107

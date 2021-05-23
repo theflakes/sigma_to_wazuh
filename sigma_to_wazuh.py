@@ -481,7 +481,7 @@ class TrackStats(object):
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
         print("         Number of Sigma 1_OF rules skipped: %s" % self.one_of_skipped)
         print("       Number of Sigma ALL_OF rules skipped: %s" % self.all_of_skipped)
-        print("         Number of Sigma HARD skipped rules: %s" % self.hard_skipped)
+        print("       Number of Sigma CONFIG rules skipped: %s" % self.hard_skipped)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
         print("-" * 55)
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
