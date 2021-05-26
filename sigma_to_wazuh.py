@@ -15,14 +15,11 @@
         - Any using a timeframe condition
     Stats on all the above will be reported by this script.
 """
-import sys, os
+import os
 import configparser
 import bs4, re
-from itertools import tee
-from xml.dom import minidom
-from xml.etree.ElementTree import Element, SubElement, Comment, tostring, ElementTree, parse, dump
+from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
-from ruamel.yaml.main import add_implicit_resolver
 
 
 class BuildRules(object):
@@ -87,12 +84,26 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             value = '(?:' + value + ')'
         return '(?i)' + value
 
+    def handle_full_log_field(self, value):
+        """
+            We do not want to honor Sigma startwith and endswith logic if we use the full_log field
+        """
+        if value.startswith('^'):
+            value = value[1:]
+        if value.endswith('$'):
+            value = value[:-1]
+        return value
+
     def add_logic(self, rule, product, field, negate, value):
         logic = SubElement(rule, 'field')
-        logic.set('name', self.convert_field_name(product, field))
+        name = self.convert_field_name(product, field)
+        logic.set('name', name)
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
-        logic.text = self.if_ends_in_space(value).replace(r'\*', r'.+') # assumption is all '*' are wildcards
+        if name == 'full_log': # should we use .* or .+ to replace *
+            logic.text = self.if_ends_in_space(self.handle_full_log_field(value)).replace(r'\*', r'.+')
+        else:
+            logic.text = self.if_ends_in_space(value).replace(r'\*', r'.+') # assumption is all '*' are wildcards
 
     def get_level(self, level):
         if level == "critical":
@@ -254,12 +265,6 @@ class ParseSigmaRules(object):
                         .replace('(', ' ( ')\
                         .replace(')', ' ) ')
 
-    def pairwise(self, iterable):
-        "s -> (s0,s1), (s1,s2), (s2, s3), ..."
-        a, b = tee(iterable)
-        next(b, None)
-        return zip(a, b)
-
     def remove_wazuh_rule(self, rules, rule):
         rules.root.remove(rule) # destroy the extra rule that is created
         rules.rule_id -= 1      # decrement the current rule id as last rule was removed
@@ -371,10 +376,10 @@ class ParseSigmaRules(object):
         return all_logic
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
-        all_logic = []  # track all the logic used in a single rule to ensure we don't duplicat it
-                        # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
         product = self.get_product(sigma_rule)
         for path in logic_paths:
+            all_logic = []  # track all the logic used in a single rule to ensure we don't duplicat it
+                            # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
             rule = rules.create_rule(sigma_rule, sigma_rule_link)
             for p in path:
