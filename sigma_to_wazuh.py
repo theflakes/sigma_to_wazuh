@@ -134,9 +134,10 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         comment = Comment('Sigma Rule Author: ' + sigma_rule_auther)
         rule.append(comment)
 
-    def add_sigma_link_comment(self, rule, sigma_rule_link):
-        comment = Comment(self.rules_link + sigma_rule_link)
-        rule.append(comment)
+    def add_sigma_link_info(self, rule, sigma_rule_link):
+        link = SubElement(rule, 'info')
+        link.set('type', 'link')
+        link.text = self.rules_link + sigma_rule_link
 
     def add_rule_comment(self, rule, misc):
         comment = Comment(misc.replace('--', ' - ')) # '--' not allowed in XML comment
@@ -164,7 +165,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def create_rule(self, sigma_rule, sigma_rule_link):
         level = sigma_rule['level']
         rule = self.init_rule(level)
-        self.add_sigma_link_comment(rule, sigma_rule_link)
+        self.add_sigma_link_info(rule, sigma_rule_link)
         # Add rule link and author
         if 'author' in sigma_rule:
             self.add_sigma_author(rule, sigma_rule['author'])
@@ -204,6 +205,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
         xml = re.sub(r'<field(.+)>\n\s+', r'<field\1>', xml)
         xml = re.sub(r'\s+</field>', r'</field>', xml)
+
+        xml = re.sub(r'<info(.+)>\n\s+', r'<info\1>', xml)
+        xml = re.sub(r'\s+</info>', r'</info>', xml)
 
         # fixup some output messed up by the above
         xml = re.sub(r'</rule></group>', r'</rule>\n</group>', xml)
