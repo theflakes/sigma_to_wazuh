@@ -458,7 +458,7 @@ class TrackSkip(object):
         self.one_of_skipped = 0
         self.all_of_skipped = 0
 
-    def if_not_loaded(self, rule, sigma_rule):
+    def rule_not_loaded(self, rule, sigma_rule):
         if not sigma_rule:
             self.rules_skipped += 1
             print("ERROR loading Sigma rule: " + rule)
@@ -556,7 +556,7 @@ def main():
 
     for rule in convert.sigma_rules:
         sigma_rule = convert.load_sigma_rule(rule)
-        if stats.if_not_loaded(rule, sigma_rule):
+        if stats.rule_not_loaded(rule, sigma_rule):
             continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
