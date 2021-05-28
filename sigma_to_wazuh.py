@@ -522,7 +522,7 @@ class TrackSkip(object):
         skip, message = self.skip_logic(condition, detection)
         if skip:
             self.rules_skipped += 1
-            print(message)
+            print(message + ": " + rule)
             
         return skip
 
