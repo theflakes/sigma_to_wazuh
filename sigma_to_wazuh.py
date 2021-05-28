@@ -222,9 +222,7 @@ class ParseSigmaRules(object):
         configParser = configparser.RawConfigParser()   
         configFilePath = r'./config.ini'
         configParser.read(configFilePath)
-        self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
         self.sigma_rules_dir = configParser.get('sigma', 'directory')
-        self.sigma_skip = configParser.get('sigma', 'skip')
         self.sigma_rules = self.get_sigma_rules()
         self.error_count = 0
         self.converted_total = 0
@@ -444,8 +442,13 @@ class ParseSigmaRules(object):
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
-class TrackStats(object):
+class TrackSkip(object):
     def __init__(self):
+        configParser = configparser.RawConfigParser()   
+        configFilePath = r'./config.ini'
+        configParser.read(configFilePath)
+        self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
+        self.sigma_skip = configParser.get('sigma', 'skip')
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
@@ -455,27 +458,71 @@ class TrackStats(object):
         self.one_of_skipped = 0
         self.all_of_skipped = 0
 
-    def check_for_logic_to_skip(self, detection, condition):
-        """
-            All logic conditions are not parsed yet.
-            This procedure will skip Sigma rules we are not ready to parse.
-        """
+    def if_not_loaded(self, rule, sigma_rule):
+        if not sigma_rule:
+            self.rules_skipped += 1
+            print("ERROR loading Sigma rule: " + rule)
+            return True
+        return False
+
+    def skip_experimental_rules(self, sigma_rule):
+        if self.process_experimental_rules == "no":
+            if 'status' in sigma_rule:
+                if sigma_rule['status'] == "experimental":
+                    self.rules_skipped += 1
+                    self.experimental_skips += 1
+                    return True
+        return False
+
+    def skip_rule_id(self, sigma_rule):
+        if sigma_rule["id"] in self.sigma_skip:
+            self.rules_skipped += 1
+            self.hard_skipped += 1
+            return True
+        return False
+
+    def skip_logic(self, condition, detection):
         skip = False
+        logic = []
+        message = "SKIPPED Sigma rule:"
         if '|' in condition:
             skip = True
             self.near_skips += 1
+            logic.append('Near')
         #if condition.count('(') > 1:
         #    skip = True
         #    self.paren_skips += 1
         if 'timeframe' in detection:
             skip = True
             self.timeframe_skips += 1
+            logic.append('Timeframe')
         if '1_of ' in condition:
             skip = True
             self.one_of_skipped += 1
+            logic.append('1_of')
         if 'all_of' in condition:
             skip = True
             self.all_of_skipped += 1
+            logic.append('all_of')
+        return skip, "{} {}".format(message, logic)
+
+    def check_for_skip(self, rule, sigma_rule, detection, condition):
+        """
+            All logic conditions are not parsed yet.
+            This procedure will skip Sigma rules we are not ready to parse.
+        """
+
+        if self.skip_experimental_rules(sigma_rule):
+            print("SKIPPED Sigma rule: " + rule)
+            return True
+        if self.skip_rule_id(sigma_rule):
+            print("HARD SKIPPED Sigma rule: " + rule)
+            return True
+        
+        skip, message = self.skip_logic(condition, detection)
+        if skip:
+            self.rules_skipped += 1
+            print(message)
             
         return skip
 
@@ -505,35 +552,17 @@ class TrackStats(object):
 def main():
     convert = ParseSigmaRules()
     wazuh_rules = BuildRules()
-    stats = TrackStats()
+    stats = TrackSkip()
 
     for rule in convert.sigma_rules:
         sigma_rule = convert.load_sigma_rule(rule)
-        if not sigma_rule:
-            stats.rules_skipped += 1
-            print("ERROR loading Sigma rule: " + rule)
+        if stats.if_not_loaded(rule, sigma_rule):
             continue
-
-        if convert.process_experimental_rules == "no":
-            if 'status' in sigma_rule:
-                if sigma_rule['status'] == "experimental":
-                    stats.rules_skipped += 1
-                    stats.experimental_skips += 1
-                    print("SKIPPED Sigma rule: " + rule)
-                    continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
 
-        if sigma_rule["id"] in convert.sigma_skip:
-            stats.rules_skipped += 1
-            stats.hard_skipped += 1
-            print(" HARD SKIPPED Sigma rule: " + rule)
-            continue
-
-        skip_rule = stats.check_for_logic_to_skip(sigma_rule['detection'], conditions)
+        skip_rule = stats.check_for_skip(rule, sigma_rule, sigma_rule['detection'], conditions)
         if skip_rule:
-            stats.rules_skipped += 1
-            print("SKIPPED Sigma rule: " + rule)
             continue
         #print(rule)
 
