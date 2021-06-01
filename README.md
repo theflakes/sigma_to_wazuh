@@ -6,6 +6,10 @@ NOT READY FOR PRODUCTION!
 ## Overview:
 My initial attempt at creating a Sigma to Wazuh rule converter.
 
+Sigma rule GUID to Wazuh rule ID use is tracked between runs in a file defined in the ini configuration: rule_id_file. This should ensure that a given Sigma rule when converted will always use the same Wazuh rule IDs. 
+
+Depending on the logic used in a Sigma rule, the conversion of a single Sigma rule may create multiple Wazuh rules. The conversion does not gaurentee that the same Wazuh rule ID is used for each Wazuh rule created by one Sigma rule. The same set of Wazuh rule IDs will be used though, assuming that a Sigma rule's logic has not drastically changed from its previous conversion.
+
 Still a long ways to go. At the least, I hope to be able to convert ~70% of the Sigma rule base without needing any manual fixups.
 
 ## get-wazuh_rule_info.py
@@ -63,16 +67,16 @@ Example summary output:
          Number of Sigma NEAR rules skipped: 25
          Number of Sigma 1_OF rules skipped: 9
        Number of Sigma ALL_OF rules skipped: 16
-       Number of Sigma CONFIG rules skipped: 2
-        Number of Sigma ERROR rules skipped: 55
+       Number of Sigma CONFIG rules skipped: 0
+        Number of Sigma ERROR rules skipped: 56
 -------------------------------------------------------
-                  Total Sigma rules skipped: 107
-                Total Sigma rules converted: 876
+                  Total Sigma rules skipped: 106
+                Total Sigma rules converted: 888
 -------------------------------------------------------
-                  Total Wazuh rules created: 1309
+                  Total Wazuh rules created: 1326
 -------------------------------------------------------
-                          Total Sigma rules: 983
-                    Sigma rules converted %: 89.11
+                          Total Sigma rules: 994
+                    Sigma rules converted %: 89.34
 ***************************************************************************
 ```
 Example Sigma rule conversions:
