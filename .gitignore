@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 *.xml
+*.json
 *.yaml
 *.txt
 test.py
