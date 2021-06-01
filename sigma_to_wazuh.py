@@ -18,6 +18,7 @@
 import os
 import configparser
 import bs4, re
+import json
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
 
@@ -36,9 +37,14 @@ class BuildRules(object):
         self.alert_by_email = self.config.get('options', 'alert_by_email')
         self.email_levels = self.config.get('options', 'email_levels')
         self.rule_id_start = int(self.config.get('options', 'rule_id_start'))
-        self.rule_id = int(self.config.get('options', 'rule_id_start'))
+        self.rule_id = self.rule_id_start
         self.out_file = self.config.get('sigma', 'out_file')
+        self.track_rule_ids_file = self.config.get('options', 'rule_id_file')   # file that stores Sigma GUID to Wazuh rule ID mappings
+        self.track_rule_ids = self.load_wazuh_to_sigma_id_mappings()    # in memory Dict of self.track_rule_ids_file contents
+        self.used_wazuh_ids = self.get_used_wazuh_rule_ids()    # used Wazuh rule IDs used in previous runs
+        self.used_wazuh_ids_this_run = []   # new Wazuh rule IDs consummed this run
         self.root = self.create_root()
+        self.rule_count = 0
         # monkey patching prettify
         # reference: https://stackoverflow.com/questions/15509397/custom-indent-width-for-beautifulsoup-prettify
         orig_prettify = bs4.BeautifulSoup.prettify
@@ -46,6 +52,25 @@ class BuildRules(object):
         def prettify(self, encoding=None, formatter="minimal", indent_width=4):
             return r.sub(r'\1' * indent_width, orig_prettify(self, encoding, formatter))
         bs4.BeautifulSoup.prettify = prettify
+
+    def load_wazuh_to_sigma_id_mappings(self):
+        """
+            Need to track Wazuh rule ID between runs so that any rules dependent
+            on these auto generated rules will not be broken by subsequent runs.
+        """
+        try:
+            with open(self.track_rule_ids_file, 'r') as ids:
+                return json.load(ids)
+        except:
+            print("ERROR loading rule id tracking file: %s" % self.track_rule_ids_file)
+            return {}
+
+    def get_used_wazuh_rule_ids(self):
+        ids = []
+        for k, v in self.track_rule_ids.items():
+            for i in v:
+                ids.append(i)
+        return ids
 
     def create_root(self):
         root = Element('group')
@@ -62,10 +87,43 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 """)
         root.append(comment)
 
-    def init_rule(self, level):
+    def update_rule_id_mappings(self, wid, sigma_guid):
+        if sigma_guid in self.track_rule_ids:
+            self.track_rule_ids[sigma_guid].append(wid)
+        else:
+            self.track_rule_ids[sigma_guid] = [wid]
+
+    def find_unused_rule_id(self, sigma_guid):
+        """
+            Lets make sure we use a Wazuh rule ID not already assigned to a Sigma GUID
+        """
+        while True:
+            self.rule_id += 1
+            if self.rule_id not in self.used_wazuh_ids:
+                wid = str(self.rule_id)
+                self.update_rule_id_mappings(wid, sigma_guid)
+                return wid
+        
+    def find_wazuh_id(self, sigma_guid):
+        """
+            Has this Sigma rule already been converted and assigned a Wazuh rule ID?
+            If so, we need to keep it the same.
+        """
+        if sigma_guid in self.track_rule_ids:
+            for wid in self.track_rule_ids[sigma_guid]:
+                if wid not in self.used_wazuh_ids_this_run:
+                    return self.track_rule_ids[sigma_guid]
+        wid = self.find_unused_rule_id(sigma_guid)
+        return wid
+
+    def init_rule(self, level, sigma_guid):
         rule = SubElement(self.root, 'rule')
-        rule.set('id', str(self.rule_id))
+        wid = self.find_wazuh_id(sigma_guid)
+        # we need to lookup both Wazuh rule IDs and Sigma GUIDs
+        self.used_wazuh_ids_this_run.append(wid)
+        rule.set('id', wid)
         rule.set('level', self.get_level(level))
+        self.rule_count += 1
         return rule
 
     def convert_field_name(self, product, field):
@@ -162,9 +220,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         groups = SubElement(rule, 'group')
         groups.text = log_sources
 
-    def create_rule(self, sigma_rule, sigma_rule_link):
+    def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
         level = sigma_rule['level']
-        rule = self.init_rule(level)
+        rule = self.init_rule(level, sigma_guid)
         self.add_sigma_link_info(rule, sigma_rule_link)
         # Add rule link and author
         if 'author' in sigma_rule:
@@ -184,8 +242,11 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_description(rule, sigma_rule['title'])
         self.add_options(rule, level)
         self.add_sources(rule, sigma_rule['logsource'])
-        self.rule_id += 1 
         return rule
+
+    def write_wazah_id_to_sigman_id(self):
+        with open(self.track_rule_ids_file, 'w') as ids:
+            ids.write(json.dumps(self.track_rule_ids))
 
     def write_rules_file(self):
         xml = bs4.BeautifulSoup(tostring(self.root), 'xml').prettify()
@@ -215,6 +276,8 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
         with open(self.out_file, "w") as file:
             file.write(xml)
+
+        self.write_wazah_id_to_sigman_id()
 
 
 class ParseSigmaRules(object):
@@ -270,6 +333,7 @@ class ParseSigmaRules(object):
     def remove_wazuh_rule(self, rules, rule):
         rules.root.remove(rule) # destroy the extra rule that is created
         rules.rule_id -= 1      # decrement the current rule id as last rule was removed
+        rules.rule_count -= 1   # decrement count of rules created
 
     def fixup_logic(self, logic):
         logic = str(logic)
@@ -306,7 +370,7 @@ class ParseSigmaRules(object):
                 if k == "condition": continue
                 if isinstance(v, dict):
                     for x, y in v.items():
-                        rule = rules.create_rule(sigma_rule, sigma_rule_link)
+                        rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
                         field, logic = self.convert_transforms(x, y)
                         self.is_dict_list_or_not(logic, rules, rule, product, field, "no")
 
@@ -317,7 +381,7 @@ class ParseSigmaRules(object):
         if 'fields' in sigma_rule:
             for f in sigma_rule['fields']:
                 self.is_dict_list_or_not(logic, rules, rule, product, f, negate)
-                rule = rules.create_rule(sigma_rule, sigma_rule_link)
+                rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             self.remove_wazuh_rule(rules, rule)
             return
         rules.add_logic(rule, product, "full_log", negate, logic)
@@ -383,7 +447,7 @@ class ParseSigmaRules(object):
             all_logic = []  # track all the logic used in a single rule to ensure we don't duplicat it
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
-            rule = rules.create_rule(sigma_rule, sigma_rule_link)
+            rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             for p in path:
                 if p.lower() == '1_of_them':
                     self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
@@ -526,7 +590,7 @@ class TrackSkip(object):
             
         return skip
 
-    def report_stats(self, error_count, sigma_rules_count, rule_id_start, rule_id_end):
+    def report_stats(self, error_count, wazuh_rules_count, sigma_rules_count):
         sigma_rules_converted = sigma_rules_count - self.rules_skipped
         sigma_rules_converted_percent = round((( sigma_rules_converted / sigma_rules_count) * 100), 2)
         print("\n\n" + "*" * 75)
@@ -542,7 +606,7 @@ class TrackSkip(object):
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
         print("                Total Sigma rules converted: %s" % sigma_rules_converted)
         print("-" * 55)
-        print("                  Total Wazuh rules created: %s" % (rule_id_end - rule_id_start))
+        print("                  Total Wazuh rules created: %s" % wazuh_rules_count)
         print("-" * 55)
         print("                          Total Sigma rules: %s" % sigma_rules_count)
         print("                    Sigma rules converted %%: %s" % sigma_rules_converted_percent)
@@ -580,8 +644,7 @@ def main():
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
 
-    stats.report_stats(convert.error_count, len(convert.sigma_rules), 
-                        wazuh_rules.rule_id_start, wazuh_rules.rule_id)
+    stats.report_stats(convert.error_count, wazuh_rules.rule_count, len(convert.sigma_rules))
 
 
 if __name__ == "__main__":
