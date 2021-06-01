@@ -112,7 +112,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         if sigma_guid in self.track_rule_ids:
             for wid in self.track_rule_ids[sigma_guid]:
                 if wid not in self.used_wazuh_ids_this_run:
-                    return self.track_rule_ids[sigma_guid]
+                    return wid
         wid = self.find_unused_rule_id(sigma_guid)
         return wid
 
