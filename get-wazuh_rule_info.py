@@ -56,20 +56,21 @@ class Report(object):
         rid = None
         level = None
         description = None
+        decoded_as = None
         fields = []
-        return rid, level, description, ifsid, fields
+        return rid, level, description, decoded_as, ifsid, fields
 
     def parse_rules(self):
-        self.tsv.append('"id"\t"level"\t"description"\t"fields"\t"parents"')
+        self.tsv.append('"id"\t"level"\t"description"\t"decoded_as"\t"fields"\t"parents"')
         for r in self.rules:
-            rid, level, description, ifsid, fields = self.init_print_vars()
+            rid, level, description, decoded_as, ifsid, fields = self.init_print_vars()
             new_rule = 0
             for e in r.iter():
                 if e.tag == 'rule':
                     new_rule += 1
                     if new_rule == 2:
-                        self.tsv.append('"{}"\t"{}"\t"{}"\t"{}"\t"{}"'.format(rid, level, description, fields, ifsid))
-                        rid, level, description, ifsid, fields = self.init_print_vars()
+                        self.tsv.append('"{}"\t"{}"\t"{}"\t"{}"\t"{}"\t"{}"'.format(rid, level, description, decoded_as, fields, ifsid))
+                        rid, level, description, decoded_as, ifsid, fields = self.init_print_vars()
                         new_rule = 0
                     rid = e.attrib.get('id')
                     level = e.attrib.get('level')
@@ -77,17 +78,19 @@ class Report(object):
                     description = e.text
                 elif e.tag == 'if_sid':
                     ifsid = e.text
+                elif e.tag == "decoded_as":
+                    decoded_as = e.text
                 elif e.tag == 'field':
                     fields.append(e.attrib.get('name'))
 
     def find_children(self):
-        self.final_csv.append('"id","level","description","fields","parents","children"')
+        self.final_csv.append('"id","level","description","decoded_as","fields","parents","children"')
         for outer in self.tsv[1:]:
             children = []
             rule_id = outer.split("\t")[0]
             for inner in self.tsv[1:]:
                 fields = inner.split("\t")
-                ifsids = [s.strip() for s in fields[4].split(',')]
+                ifsids = [s.strip() for s in fields[5].split(',')]
                 if rule_id in ifsids:
                     children.append(fields[0])
             if children:
