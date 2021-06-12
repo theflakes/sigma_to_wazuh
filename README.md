@@ -14,13 +14,13 @@ Still a long ways to go. At the least, I hope to be able to convert ~70% of the 
 
 ## get-wazuh_rule_info.py
 - creates a CSV file named "wazuh_rule_report.csv" with the below information
-```"id","level","description","fields","parents","children"```
+```"id","level","description","decoded_as","fields","parents","children"```
 - Fields = all fields used in Field logic rule entries
 - Parents = all rules this rule depends on to be run against a log
 - Children = all rule IDs where this rule occurs in their if_sid
+I use this for writing Sigma rules to understand when I need to use if_sid to ensure my new rule will fire on the correct logs.
 
 ## sigma_to_wazuh.py
-
 NOTE: 
 - Due to OR logic limitations in Wazuh rules, one Sigma rule can produce more than one Wazuh rule.
 - PCRE case insenstivie logic is used for all logic.
@@ -62,21 +62,21 @@ Example summary output:
 ```
 ***************************************************************************
  Number of Sigma Experimental rules skipped: 0
-    Number of Sigma TIMEFRAME rules skipped: 22
+    Number of Sigma TIMEFRAME rules skipped: 30
         Number of Sigma PAREN rules skipped: 0
          Number of Sigma NEAR rules skipped: 25
-         Number of Sigma 1_OF rules skipped: 9
+         Number of Sigma 1_OF rules skipped: 11
        Number of Sigma ALL_OF rules skipped: 16
        Number of Sigma CONFIG rules skipped: 0
-        Number of Sigma ERROR rules skipped: 56
+        Number of Sigma ERROR rules skipped: 59
 -------------------------------------------------------
-                  Total Sigma rules skipped: 106
-                Total Sigma rules converted: 888
+                  Total Sigma rules skipped: 119
+                Total Sigma rules converted: 898
 -------------------------------------------------------
-                  Total Wazuh rules created: 1326
+                  Total Wazuh rules created: 1346
 -------------------------------------------------------
-                          Total Sigma rules: 994
-                    Sigma rules converted %: 89.34
+                          Total Sigma rules: 1017
+                    Sigma rules converted %: 88.3
 ***************************************************************************
 ```
 Example Sigma rule conversions:
@@ -124,8 +124,8 @@ level: high
 
 WAZUH RULE(s):
 -----------------------------------------
-<rule id="1000648" level="13">
-    <!--https://github.com/SigmaHQ/sigma/tree/master/rules/windows/process_creation/win_susp_compression_params.yml-->
+<rule id="1000662" level="13">
+    <info type="link">https://github.com/SigmaHQ/sigma/tree/master/rules/windows/process_creation/win_susp_compression_params.yml</info>
     <!--Sigma Rule Author: Florian Roth, Samir Bousseaden-->
     <!--Description: Detects suspicious command line arguments of common data compression tools-->
     <!--Date: 2019/10/15-->
@@ -185,8 +185,8 @@ level: high
 
 WAZUH RULE(s):
 -----------------------------------------
-<rule id="1000141" level="13">
-    <!--https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml-->
+<rule id="1000144" level="13">
+    <info type="link">https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml</info>
     <!--Sigma Rule Author: Samir Bousseaden, @neu5ron-->
     <!--Description: detects execution of psexec or paexec with renamed service name, this rule helps to filter out the noise if psexec is used for legit purposes or if attacker uses a different psexec client other than sysinternal one-->
     <!--Date: 2020/04/02-->
@@ -200,9 +200,9 @@ WAZUH RULE(s):
     <options>no_full_log,alert_by_email</options>
     <group>zeek,smb_files,</group>
     <field name="full_log" negate="no" type="pcre2">(?i)\\\\</field>
-    <field name="full_log" negate="no" type="pcre2">(?i)\\IPC\$</field>
-    <field name="full_log" negate="no" type="pcre2">(?i)(?:\-stdin|\-stdout|\-stderr)$</field>
-    <field name="full_log" negate="yes" type="pcre2">(?i)^(?:PSEXESVC)</field>
+    <field name="full_log" negate="no" type="pcre2">(?i)\\IPC\</field>
+    <field name="full_log" negate="no" type="pcre2">(?i)(?:\-stdin|\-stdout|\-stderr)</field>
+    <field name="full_log" negate="yes" type="pcre2">(?i)(?:PSEXESVC)</field>
 </rule>
 ```
 ```
@@ -245,8 +245,8 @@ tags:
 
 WAZUH RULE(s):
 -----------------------------------------
-<rule id="1000014" level="13">
-    <!--https://github.com/SigmaHQ/sigma/tree/master/rules/proxy/proxy_cobalt_amazon.yml-->
+<rule id="1000015" level="13">
+    <info type="link">https://github.com/SigmaHQ/sigma/tree/master/rules/proxy/proxy_cobalt_amazon.yml</info>
     <!--Sigma Rule Author: Markus Neis-->
     <!--Description: Detects Malleable Amazon Profile-->
     <!--Date: 2019/11/12-->
@@ -265,10 +265,10 @@ WAZUH RULE(s):
     <field name="full_log" negate="no" type="pcre2">(?i)GET</field>
     <field name="full_log" negate="no" type="pcre2">(?i)/s/ref=nb_sb_noss_1/167\-3294888\-0262949/field\-keywords=books</field>
     <field name="full_log" negate="no" type="pcre2">(?i)www\.amazon\.com</field>
-    <field name="full_log" negate="no" type="pcre2">(?i)(?:=csm\-hit=s\-24KU11BB82RZSYGJ3BDK\|1419899012996)$</field>
+    <field name="full_log" negate="no" type="pcre2">(?i)(?:=csm\-hit=s\-24KU11BB82RZSYGJ3BDK\|1419899012996)</field>
 </rule>
-<rule id="1000015" level="13">
-    <!--https://github.com/SigmaHQ/sigma/tree/master/rules/proxy/proxy_cobalt_amazon.yml-->
+<rule id="1000016" level="13">
+    <info type="link">https://github.com/SigmaHQ/sigma/tree/master/rules/proxy/proxy_cobalt_amazon.yml</info>
     <!--Sigma Rule Author: Markus Neis-->
     <!--Description: Detects Malleable Amazon Profile-->
     <!--Date: 2019/11/12-->

@@ -75,6 +75,7 @@ class Report(object):
                     level = e.attrib.get('level')
                 elif e.tag == 'description':
                     description = e.text
+                    description = description.replace('"', '""') # one rule has quotes in the description, need to escap them
                 elif e.tag == 'if_sid':
                     ifsid = e.text
                 elif e.tag == "decoded_as":
