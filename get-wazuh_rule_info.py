@@ -64,14 +64,13 @@ class Report(object):
         self.tsv.append('"id"\t"level"\t"description"\t"decoded_as"\t"fields"\t"parents"')
         for r in self.rules:
             rid, level, description, decoded_as, ifsid, fields = self.init_print_vars()
-            new_rule = 0
+            new_rule = False
             for e in r.iter():
                 if e.tag == 'rule':
-                    new_rule += 1
-                    if new_rule == 2:
+                    if new_rule:
                         self.tsv.append('"{}"\t"{}"\t"{}"\t"{}"\t"{}"\t"{}"'.format(rid, level, description, decoded_as, fields, ifsid))
                         rid, level, description, decoded_as, ifsid, fields = self.init_print_vars()
-                        new_rule = 0
+                    new_rule = True
                     rid = e.attrib.get('id')
                     level = e.attrib.get('level')
                 elif e.tag == 'description':
