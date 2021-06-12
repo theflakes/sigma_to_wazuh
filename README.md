@@ -17,7 +17,7 @@ Still a long ways to go. At the least, I hope to be able to convert ~70% of the 
 ```"id","level","description","decoded_as","fields","parents","children"```
 - Fields = all fields used in Field logic rule entries
 - Parents = all rules this rule depends on to be run against a log
-- Children = all rule IDs where this rule occurs in their if_sid
+- Children = all rule IDs where this rule occurs in their if_sid  
 I use this for writing Sigma rules to understand when I need to use if_sid to ensure my new rule will fire on the correct logs.
 
 ## sigma_to_wazuh.py
