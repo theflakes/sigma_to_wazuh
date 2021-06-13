@@ -549,9 +549,9 @@ class TrackSkip(object):
         self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
         self.sigma_skip_ids = eval(configParser.get('sigma', 'skip_ids'), {}, {})
         self.sigma_convert_all = configParser.get('sigma', 'convert_all')
-        self.sigma_only_products = eval(configParser.get('sigma', 'only_products'), {}, {})
-        self.sigma_only_categories = eval(configParser.get('sigma', 'only_categories'), {}, {})
-        self.sigma_only_services = eval(configParser.get('sigma', 'only_services'), {}, {})
+        self.sigma_only_products = eval(configParser.get('sigma', 'convert_only_products'), {}, {})
+        self.sigma_only_categories = eval(configParser.get('sigma', 'convert_only_categories'), {}, {})
+        self.sigma_only_services = eval(configParser.get('sigma', 'convert_only_services'), {}, {})
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
