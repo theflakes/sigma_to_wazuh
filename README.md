@@ -140,7 +140,8 @@ WAZUH RULE(s):
         <id>attack.t1002</id>
     </mitre>
     <description>Suspicious Compression Tool Parameters</description>
-    <options>no_full_log,alert_by_email</options>
+    <options>no_full_log</options>
+    <options>alert_by_email</options>
     <group>process_creation,windows,</group>
     <field name="win.eventdata.originalFileName" negate="no" type="pcre2">(?i)7z.+\.exe|rar\.exe|Command.+Line.+RAR</field>
     <field name="win.eventdata.commandLine" negate="no" type="pcre2">(?i)\ \-p|\ \-ta|\ \-tb|\ \-sdel|\ \-dw|\ \-hp</field>
@@ -198,7 +199,8 @@ WAZUH RULE(s):
         <id>attack.t1021.002</id>
     </mitre>
     <description>Suspicious PsExec Execution - Zeek</description>
-    <options>no_full_log,alert_by_email</options>
+    <options>no_full_log</options>
+    <options>alert_by_email</options>
     <group>zeek,smb_files,</group>
     <field name="full_log" negate="no" type="pcre2">(?i)\\\\</field>
     <field name="full_log" negate="no" type="pcre2">(?i)\\IPC\</field>
@@ -260,7 +262,8 @@ WAZUH RULE(s):
         <id>attack.t1043</id>
     </mitre>
     <description>CobaltStrike Malleable Amazon Browsing Traffic Profile</description>
-    <options>no_full_log,alert_by_email</options>
+    <options>no_full_log</options>
+    <options>alert_by_email</options>
     <group>proxy,</group>
     <field name="full_log" negate="no" type="pcre2">(?i)Mozilla/5\.0\ \(Windows\ NT\ 6\.1;\ WOW64;\ Trident/7\.0;\ rv:11\.0\)\ like\ Gecko</field>
     <field name="full_log" negate="no" type="pcre2">(?i)GET</field>
@@ -282,7 +285,8 @@ WAZUH RULE(s):
         <id>attack.t1043</id>
     </mitre>
     <description>CobaltStrike Malleable Amazon Browsing Traffic Profile</description>
-    <options>no_full_log,alert_by_email</options>
+    <options>no_full_log</options>
+    <options>alert_by_email</options>
     <group>proxy,</group>
     <field name="full_log" negate="no" type="pcre2">(?i)Mozilla/5\.0\ \(Windows\ NT\ 6\.1;\ WOW64;\ Trident/7\.0;\ rv:11\.0\)\ like\ Gecko</field>
     <field name="full_log" negate="no" type="pcre2">(?i)POST</field>
