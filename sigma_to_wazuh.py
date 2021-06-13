@@ -66,7 +66,7 @@ class BuildRules(object):
             return {}
 
     def get_used_wazuh_rule_ids(self):
-        ids = []
+        ids = [str(self.rule_id_start)] # never use the first number
         for k, v in self.track_rule_ids.items():
             for i in v:
                 ids.append(i)
@@ -87,7 +87,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 """)
         root.append(comment)
 
-    def update_rule_id_mappings(self, wid, sigma_guid):
+    def update_rule_id_mappings(self, sigma_guid, wid):
         if sigma_guid in self.track_rule_ids:
             self.track_rule_ids[sigma_guid].append(wid)
         else:
@@ -101,7 +101,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             self.rule_id += 1
             if self.rule_id not in self.used_wazuh_ids:
                 wid = str(self.rule_id)
-                self.update_rule_id_mappings(wid, sigma_guid)
+                self.update_rule_id_mappings(sigma_guid, wid)
                 return wid
         
     def find_wazuh_id(self, sigma_guid):
@@ -148,7 +148,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
         if value.startswith('^'):
             value = value[1:]
-        if value.endswith('$'):
+        if value.endswith('$') and not value[-2:] == '\$':
             value = value[:-1]
         return value
 
@@ -174,13 +174,12 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return self.low
 
     def add_options(self, rule, level):
-        options = SubElement(rule, 'options')
-        ops = ""
         if self.no_full_log == 'yes':
-            ops = "no_full_log"
+            options = SubElement(rule, 'options')
+            options.text = "no_full_log"
         if self.alert_by_email == 'yes' and (level in self.email_levels):
-            ops = ops + ",alert_by_email"
-        options.text = ops
+            options = SubElement(rule, 'options')
+            options.text = "alert_by_email"
 
     def add_mitre(self, rule, tags):
         mitre = SubElement(rule, 'mitre')
@@ -220,6 +219,12 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         groups = SubElement(rule, 'group')
         groups.text = log_sources
 
+    def add_if_sid(self, rule, product):
+        if not product in self.config['if_sid']:
+            return
+        if_sid = SubElement(rule, 'if_sid')
+        if_sid.text = self.config['if_sid'][product]
+
     def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
         level = sigma_rule['level']
         rule = self.init_rule(level, sigma_guid)
@@ -242,6 +247,8 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_description(rule, sigma_rule['title'])
         self.add_options(rule, level)
         self.add_sources(rule, sigma_rule['logsource'])
+        if 'product' in sigma_rule['logsource']:
+            self.add_if_sid(rule, sigma_rule['logsource']['product'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
@@ -269,6 +276,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
         xml = re.sub(r'<info(.+)>\n\s+', r'<info\1>', xml)
         xml = re.sub(r'\s+</info>', r'</info>', xml)
+
+        xml = re.sub(r'<if_sid>\n\s+', r'<if_sid>', xml)
+        xml = re.sub(r'\s+</if_sid>', r'</if_sid>', xml)
 
         # fixup some output messed up by the above
         xml = re.sub(r'</rule></group>', r'</rule>\n</group>', xml)
@@ -332,7 +342,6 @@ class ParseSigmaRules(object):
 
     def remove_wazuh_rule(self, rules, rule):
         rules.root.remove(rule) # destroy the extra rule that is created
-        rules.rule_id -= 1      # decrement the current rule id as last rule was removed
         rules.rule_count -= 1   # decrement count of rules created
 
     def fixup_logic(self, logic):
@@ -386,22 +395,43 @@ class ParseSigmaRules(object):
             return
         rules.add_logic(rule, product, "full_log", negate, logic)
 
-    def is_dict_logic(self, values, rules, product, rule, negate):
+    def is_dict_logic(self, values, rules, product, rule, negate, logic):
+        """
+            Function is not being used by any rule conversions. 
+            Possibly REFACTOR
+        """
         for k, v in values.items():
             if isinstance(v, dict):
-                self.is_dict_logic(v, rules, product, rule, negate)
+                self.is_dict_logic(v, rules, product, rule, negate, logic)
                 continue
-            rules.add_logic(rule, product, k, negate, v)
+            logic += '|' + v
+        rules.add_logic(rule, product, k, negate, logic)
 
     def is_dict_list_or_not(self, logic, rules, rule, product, field, negate):
         if isinstance(logic, dict):
-            self.is_dict_logic(logic, rules, product, rule, negate)
+            self.is_dict_logic(logic, rules, product, rule, negate, '')
             return
         if isinstance(logic, list): # if logic is still a list then its contain|all logic
             for l in logic:
                 rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
             return
         rules.add_logic(rule, product, field, negate, logic)
+
+    def handle_detection_nested_lists(self, values, key, value):
+        """
+            We can run into lists at various depths in Sigma deteciton logic.
+        """
+        if key in values:   # do we already have same logic being applied to this field?
+            if isinstance(values[key], list):
+                values[key].append(value)
+            else:
+                if isinstance(value, list):
+                    values[key] = [values[key], value]
+                else:
+                    values[key] = str(values[key]) + '|' + str(value)
+        else:
+            values[key] = value
+        return values[key]
 
     def get_detection(self, detection, token):
         """
@@ -413,10 +443,11 @@ class ParseSigmaRules(object):
             for d in detection:
                 if isinstance(d, dict):
                     for k, v in d.items():
-                        values[k] = v
+                        values[k] = self.handle_detection_nested_lists(values, k, v)
                     continue
                 values[token] = detection # handle one deep detections
             return values
+
         for k, v in detection.items():
             values[k] = v
         return values
@@ -432,8 +463,12 @@ class ParseSigmaRules(object):
 
         for k, v in detections.items():
             field, logic = self.convert_transforms(k, v)
-            if logic not in all_logic: # do not add duplicate logic to a rule, even if its negated
-                all_logic.append(logic)
+            name = rules.convert_field_name(product, field) # lets get what the field name will be in the Wazuh XML rules file
+                                                            # as we need to handle the full_log field
+            if name not in all_logic:
+                all_logic[name] = []
+            if logic not in all_logic[name]: # do not add duplicate logic to a rule, even if its negated
+                all_logic[name].append(logic)
                 if k == 'keywords':
                     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate)
                     continue
@@ -444,7 +479,7 @@ class ParseSigmaRules(object):
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
         product = self.get_product(sigma_rule)
         for path in logic_paths:
-            all_logic = []  # track all the logic used in a single rule to ensure we don't duplicat it
+            all_logic = {}  # track all the logic used in a single rule to ensure we don't duplicat it
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
