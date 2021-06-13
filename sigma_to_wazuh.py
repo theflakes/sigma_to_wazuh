@@ -547,7 +547,11 @@ class TrackSkip(object):
         configFilePath = r'./config.ini'
         configParser.read(configFilePath)
         self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
-        self.sigma_skip = configParser.get('sigma', 'skip')
+        self.sigma_skip_ids = eval(configParser.get('sigma', 'skip_ids'), {}, {})
+        self.sigma_convert_all = configParser.get('sigma', 'convert_all')
+        self.sigma_only_products = eval(configParser.get('sigma', 'only_products'), {}, {})
+        self.sigma_only_categories = eval(configParser.get('sigma', 'only_categories'), {}, {})
+        self.sigma_only_services = eval(configParser.get('sigma', 'only_services'), {}, {})
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
@@ -573,12 +577,29 @@ class TrackSkip(object):
                     return True
         return False
 
-    def skip_rule_id(self, sigma_rule):
-        if sigma_rule["id"] in self.sigma_skip:
+    def skip_rule(self, sigma_rule):
+        if sigma_rule["id"] in self.sigma_skip_ids: # skip specific Sigma rule GUIDs
             self.rules_skipped += 1
             self.hard_skipped += 1
             return True
-        return False
+
+        if self.sigma_convert_all.lower() == 'yes': # convert all rules except explicit GUID skips
+            return False
+
+        skip = True
+        if 'category' in sigma_rule['logsource']:
+            if sigma_rule['logsource']['category'].lower() in self.sigma_only_categories:
+                skip = False
+        if 'service' in sigma_rule['logsource']:
+            if sigma_rule['logsource']['service'].lower() in self.sigma_only_services:
+                skip = False
+        if 'product' in sigma_rule['logsource']:
+            if sigma_rule['logsource']['product'].lower() in self.sigma_only_products:
+                skip = False
+        if skip:
+            self.rules_skipped += 1
+            self.hard_skipped += 1
+        return skip
 
     def skip_logic(self, condition, detection):
         skip = False
@@ -610,11 +631,10 @@ class TrackSkip(object):
             All logic conditions are not parsed yet.
             This procedure will skip Sigma rules we are not ready to parse.
         """
-
         if self.skip_experimental_rules(sigma_rule):
             print("SKIPPED Sigma rule: " + rule)
             return True
-        if self.skip_rule_id(sigma_rule):
+        if self.skip_rule(sigma_rule):
             print("HARD SKIPPED Sigma rule: " + rule)
             return True
         
