@@ -25,15 +25,15 @@ from ruamel.yaml import YAML
 
 class BuildRules(object):
     def __init__(self):
-        self.config = configparser.ConfigParser()   
-        configFilePath = r'./config.ini'
-        self.config.read(configFilePath)
+        self.config = configparser.ConfigParser()
+        self.config.read(r'./config.ini')
         self.rules_link = self.config.get('sigma', 'rules_link')
         self.low = self.config.get('levels', 'low')
         self.medium = self.config.get('levels', 'medium')
         self.high = self.config.get('levels', 'high')
         self.critical = self.config.get('levels', 'critical')
         self.no_full_log = self.config.get('options', 'no_full_log')
+        self.sigma_guid_email = eval(self.config.get('options', 'sigma_guid_email'), {}, {})
         self.alert_by_email = self.config.get('options', 'alert_by_email')
         self.email_levels = self.config.get('options', 'email_levels')
         self.rule_id_start = int(self.config.get('options', 'rule_id_start'))
@@ -173,13 +173,17 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         
         return self.low
 
-    def add_options(self, rule, level):
+    def add_options(self, rule, level, sigma_guid):
         if self.no_full_log == 'yes':
             options = SubElement(rule, 'options')
             options.text = "no_full_log"
         if self.alert_by_email == 'yes' and (level in self.email_levels):
             options = SubElement(rule, 'options')
             options.text = "alert_by_email"
+            return
+        if sigma_guid in self.sigma_guid_email:
+            if_sid = SubElement(rule, 'options')
+            if_sid.text = "alert_by_email"
 
     def add_mitre(self, rule, tags):
         mitre = SubElement(rule, 'mitre')
@@ -219,11 +223,15 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         groups = SubElement(rule, 'group')
         groups.text = log_sources
 
-    def add_if_sid(self, rule, product):
-        if not product in self.config['if_sid']:
+    def add_if_sid(self, rule, sigma_guid, product):
+        if sigma_guid in self.config['if_sid_guid']:
+            if_sid = SubElement(rule, 'if_sid')
+            if_sid.text = self.config['if_sid_guid'][sigma_guid]
             return
-        if_sid = SubElement(rule, 'if_sid')
-        if_sid.text = self.config['if_sid'][product]
+        if product in self.config['if_sid_product']:
+            if_sid = SubElement(rule, 'if_sid')
+            if_sid.text = self.config['if_sid_product'][product]
+        
 
     def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
         level = sigma_rule['level']
@@ -245,10 +253,10 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         if 'tags' in sigma_rule:
             self.add_mitre(rule, sigma_rule['tags'])
         self.add_description(rule, sigma_rule['title'])
-        self.add_options(rule, level)
+        self.add_options(rule, level, sigma_rule['id'])
         self.add_sources(rule, sigma_rule['logsource'])
         if 'product' in sigma_rule['logsource']:
-            self.add_if_sid(rule, sigma_rule['logsource']['product'])
+            self.add_if_sid(rule, sigma_rule['id'], sigma_rule['logsource']['product'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
@@ -292,10 +300,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
 class ParseSigmaRules(object):
     def __init__(self):
-        configParser = configparser.RawConfigParser()   
-        configFilePath = r'./config.ini'
-        configParser.read(configFilePath)
-        self.sigma_rules_dir = configParser.get('sigma', 'directory')
+        self.config = configparser.ConfigParser()
+        self.config.read(r'./config.ini')
+        self.sigma_rules_dir = self.config.get('sigma', 'directory')
         self.sigma_rules = self.get_sigma_rules()
         self.error_count = 0
         self.converted_total = 0
@@ -395,22 +402,22 @@ class ParseSigmaRules(object):
             return
         rules.add_logic(rule, product, "full_log", negate, logic)
 
-    def is_dict_logic(self, values, rules, product, rule, negate, logic):
-        """
-            Function is not being used by any rule conversions. 
-            Possibly REFACTOR
-        """
-        for k, v in values.items():
-            if isinstance(v, dict):
-                self.is_dict_logic(v, rules, product, rule, negate, logic)
-                continue
-            logic += '|' + v
-        rules.add_logic(rule, product, k, negate, logic)
+    #def is_dict_logic(self, values, rules, product, rule, negate, logic):
+    #    """
+    #        Function is not being used by any rule conversions. 
+    #        Possibly REFACTOR
+    #    """
+    #    for k, v in values.items():
+    #        if isinstance(v, dict):
+    #            self.is_dict_logic(v, rules, product, rule, negate, logic)
+    #            continue
+    #        logic += '|' + v
+    #    rules.add_logic(rule, product, k, negate, logic)
 
     def is_dict_list_or_not(self, logic, rules, rule, product, field, negate):
-        if isinstance(logic, dict):
-            self.is_dict_logic(logic, rules, product, rule, negate, '')
-            return
+        #if isinstance(logic, dict):
+        #    self.is_dict_logic(logic, rules, product, rule, negate, '')
+        #    return
         if isinstance(logic, list): # if logic is still a list then its contain|all logic
             for l in logic:
                 rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
@@ -543,15 +550,14 @@ class ParseSigmaRules(object):
 
 class TrackSkip(object):
     def __init__(self):
-        configParser = configparser.RawConfigParser()   
-        configFilePath = r'./config.ini'
-        configParser.read(configFilePath)
-        self.process_experimental_rules = configParser.get('sigma', 'process_experimental')
-        self.sigma_skip_ids = eval(configParser.get('sigma', 'skip_ids'), {}, {})
-        self.sigma_convert_all = configParser.get('sigma', 'convert_all')
-        self.sigma_only_products = eval(configParser.get('sigma', 'convert_only_products'), {}, {})
-        self.sigma_only_categories = eval(configParser.get('sigma', 'convert_only_categories'), {}, {})
-        self.sigma_only_services = eval(configParser.get('sigma', 'convert_only_services'), {}, {})
+        self.config = configparser.ConfigParser()
+        self.config.read(r'./config.ini')
+        self.process_experimental_rules = self.config.get('sigma', 'process_experimental')
+        self.sigma_skip_ids = eval(self.config.get('sigma', 'skip_ids'), {}, {})
+        self.sigma_convert_all = self.config.get('sigma', 'convert_all')
+        self.sigma_only_products = eval(self.config.get('sigma', 'convert_only_products'), {}, {})
+        self.sigma_only_categories = eval(self.config.get('sigma', 'convert_only_categories'), {}, {})
+        self.sigma_only_services = eval(self.config.get('sigma', 'convert_only_services'), {}, {})
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
