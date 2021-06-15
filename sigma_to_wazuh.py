@@ -553,7 +553,7 @@ class TrackSkip(object):
         self.config = configparser.ConfigParser()
         self.config.read(r'./config.ini')
         self.process_experimental_rules = self.config.get('sigma', 'process_experimental')
-        self.sigma_skip_ids = eval(self.config.get('sigma', 'skip_ids'), {}, {})
+        self.sigma_skip_ids = eval(self.config.get('sigma', 'skip_sigma_guids'), {}, {})
         self.sigma_convert_all = self.config.get('sigma', 'convert_all')
         self.sigma_only_products = eval(self.config.get('sigma', 'convert_only_products'), {}, {})
         self.sigma_only_categories = eval(self.config.get('sigma', 'convert_only_categories'), {}, {})
