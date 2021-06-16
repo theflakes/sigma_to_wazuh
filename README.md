@@ -12,6 +12,8 @@ Depending on the logic used in a Sigma rule, the conversion of a single Sigma ru
 
 Still a long ways to go. At the least, I hope to be able to convert ~70% of the Sigma rule base without needing any manual fixups.
 
+### More work needs to be completed on Wazuh if_sid rule dependencies and Sigma to Wazuh field name transforms.
+
 ## get-wazuh_rule_info.py
 - creates a CSV file named "wazuh_rule_report.csv" with the below information
 ```"id","level","description","decoded_as","fields","parents","children"```
