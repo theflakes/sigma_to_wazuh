@@ -66,10 +66,12 @@ class BuildRules(object):
             return {}
 
     def get_used_wazuh_rule_ids(self):
-        ids = [str(self.rule_id_start)] # never use the first number
+        #ids = [str(self.rule_id_start)] # never use the first number
+        ids = []
         for k, v in self.track_rule_ids.items():
             for i in v:
-                ids.append(i)
+                if i not in ids:
+                    ids.append(i)
         return ids
 
     def create_root(self):
@@ -89,7 +91,8 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
     def update_rule_id_mappings(self, sigma_guid, wid):
         if sigma_guid in self.track_rule_ids:
-            self.track_rule_ids[sigma_guid].append(wid)
+            if wid not in self.track_rule_ids[sigma_guid]:
+                self.track_rule_ids[sigma_guid].append(wid)
         else:
             self.track_rule_ids[sigma_guid] = [wid]
 
@@ -99,10 +102,11 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
         while True:
             self.rule_id += 1
-            if self.rule_id not in self.used_wazuh_ids:
-                wid = str(self.rule_id)
-                self.update_rule_id_mappings(sigma_guid, wid)
-                return wid
+            wid = str(self.rule_id)
+            if wid not in self.used_wazuh_ids:
+                if wid not in self.used_wazuh_ids_this_run:
+                    self.update_rule_id_mappings(sigma_guid, wid)
+                    return wid
         
     def find_wazuh_id(self, sigma_guid):
         """
@@ -119,7 +123,6 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def init_rule(self, level, sigma_guid):
         rule = SubElement(self.root, 'rule')
         wid = self.find_wazuh_id(sigma_guid)
-        # we need to lookup both Wazuh rule IDs and Sigma GUIDs
         self.used_wazuh_ids_this_run.append(wid)
         rule.set('id', wid)
         rule.set('level', self.get_level(level))
