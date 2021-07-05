@@ -11,6 +11,9 @@ Clone Sigma repository: [https://github.com/SigmaHQ/sigma](https://github.com/Si
 Update "config.ini" variables where necessary.
 - directory: point it to the rules folder in the cloned Sigma repository
 
+Run sigma_to_wazuh.py
+- You'll see output of rules that are skipped, rules that error out on loading, followed by a summary of the rules conversion.
+
 ## Overview:
 My initial attempt at creating a Sigma to Wazuh rule converter.
 
