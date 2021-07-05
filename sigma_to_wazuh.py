@@ -238,13 +238,13 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         rule = self.init_rule(level, sigma_guid)
         self.add_sigma_link_info(rule, sigma_rule_link)
         # Add rule link and author
-        if 'author' in sigma_rule:
+        if 'author' in sigma_rule and sigma_rule['author'] is not None:
             self.add_sigma_author(rule, sigma_rule['author'])
-        if 'description' in sigma_rule:
+        if 'description' in sigma_rule and sigma_rule['description'] is not None:
             self.add_rule_comment(rule, "Description: " + sigma_rule['description'])
-        if 'date' in sigma_rule:
+        if 'date' in sigma_rule and sigma_rule['date'] is not None:
             self.add_rule_comment(rule, "Date: " + sigma_rule['date'])
-        if 'status' in sigma_rule:
+        if 'status' in sigma_rule and sigma_rule['status'] is not None:
             self.add_rule_comment(rule, "Status: " + sigma_rule['status'])
         if 'id' in sigma_rule:
             self.add_rule_comment(rule, "ID: " + sigma_rule['id'])
