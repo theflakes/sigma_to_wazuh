@@ -1,7 +1,15 @@
 # sigma_to_wazuh
 Convert Sigma rules to Wazuh rules
 
-### Possibly ready for production. Converted rules now load in Wazuh.
+## How to:
+Clone repository.  
+
+Install Python3 packages: pip install lxml bs4 ruamel.yaml
+
+Clone Sigma repository: [https://github.com/SigmaHQ/sigma](https://github.com/SigmaHQ/sigma)
+
+Update "config.ini" variables where necessary.
+- directory: point it to the rules folder in the cloned Sigma repository
 
 ## Overview:
 My initial attempt at creating a Sigma to Wazuh rule converter.
