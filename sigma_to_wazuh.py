@@ -364,31 +364,51 @@ class ParseSigmaRules(object):
             if logic[-1] == '*': logic = logic[:-1]
         return re.escape(logic)
 
-    def handle_list(self, value, is_b64):
+    def handle_b64offsets_list(self, value):
+        offset1 = ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
+        offset2 = ('|'.join([str(base64.b64encode((' ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=', '')[2:]
+        offset3 = ('|'.join([str(base64.b64encode(('  ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=', '')[3:]
+        print(offset1 + "|" + offset2 + "|" + offset3)
+        return offset1 + "|" + offset2 + "|" + offset3
+
+    def handle_b64offsets(self, value):
+        offset1 = (str(base64.b64encode(value.encode('utf-8')), 'utf-8')).replace('=', '')
+        offset2 = (str(base64.b64encode((' ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[2:]
+        offset3 = (str(base64.b64encode(('  ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[3:]
+        print(offset1 + "|" + offset2 + "|" + offset3)
+        return offset1 + "|" + offset2 + "|" + offset3
+
+    def handle_list(self, value, is_b64, b64_offset):
         if isinstance(value, list):
             if is_b64:
-                return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value]))
-            return ('|'.join([self.fixup_logic(i) for i in value]))
+                if b64_offset:
+                    return self.handle_b64offsets_list(value)
+                return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
+            return ('|'.join([self.fixup_logic(i) for i in value])).replace('=', '')
         if is_b64:
-            return str(base64.b64encode(value.encode('utf-8')), 'utf-8')
+            if b64_offset:
+                return self.handle_b64offsets(value)
+            return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         return self.fixup_logic(value)
 
     def convert_transforms(self, key, value):
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
-                return field, self.handle_list(value, False), False
+                return field, self.handle_list(value, False, False), False
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                return field, '^(?:' + self.handle_list(value, False) + ')', False
+                return field, '^(?:' + self.handle_list(value, False, False) + ')', False
             if transform.lower() == 'endswith':
-                return field, '(?:' + self.handle_list(value, False) + ')$', False
+                return field, '(?:' + self.handle_list(value, False, False) + ')$', False
             if transform.lower() == "re":
                 return field, value, False
             if transform.lower() == "base64offset|contains":
-                return field, self.handle_list(value, True), True
-        return key, self.handle_list(value, False), False
+                return field, self.handle_list(value, True, True), True
+            if transform.lower() == "base64|contains":
+                return field, self.handle_list(value, True, False), True
+        return key, self.handle_list(value, False, False), False
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product):
