@@ -368,14 +368,12 @@ class ParseSigmaRules(object):
         offset1 = ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
         offset2 = ('|'.join([str(base64.b64encode((' ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=', '')[2:]
         offset3 = ('|'.join([str(base64.b64encode(('  ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=', '')[3:]
-        print(offset1 + "|" + offset2 + "|" + offset3)
         return offset1 + "|" + offset2 + "|" + offset3
 
     def handle_b64offsets(self, value):
         offset1 = (str(base64.b64encode(value.encode('utf-8')), 'utf-8')).replace('=', '')
         offset2 = (str(base64.b64encode((' ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[2:]
         offset3 = (str(base64.b64encode(('  ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[3:]
-        print(offset1 + "|" + offset2 + "|" + offset3)
         return offset1 + "|" + offset2 + "|" + offset3
 
     def handle_list(self, value, is_b64, b64_offset):
