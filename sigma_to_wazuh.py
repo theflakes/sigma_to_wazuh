@@ -19,6 +19,7 @@ import os
 import configparser
 import bs4, re
 import json
+import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
 
@@ -135,7 +136,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
                 return self.config[product][field]
         return "full_log" # target full log if we cannot find the field
 
-    def if_ends_in_space(self, value):
+    def if_ends_in_space(self, value, is_b64):
         """
             spaces at end of logic are being chopped, therefore hacking this fix
         """
@@ -143,6 +144,8 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             value = value[4:]
         if value.endswith(' '):
             value = '(?:' + value + ')'
+        if is_b64:
+            return value
         return '(?i)' + value
 
     def handle_full_log_field(self, value):
@@ -155,16 +158,16 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             value = value[:-1]
         return value
 
-    def add_logic(self, rule, product, field, negate, value):
+    def add_logic(self, rule, product, field, negate, value, is_b64):
         logic = SubElement(rule, 'field')
         name = self.convert_field_name(product, field)
         logic.set('name', name)
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
         if name == 'full_log': # should we use .* or .+ to replace *
-            logic.text = self.if_ends_in_space(self.handle_full_log_field(value)).replace(r'\*', r'.+')
+            logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+')
         else:
-            logic.text = self.if_ends_in_space(value).replace(r'\*', r'.+') # assumption is all '*' are wildcards
+            logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*', r'.+') # assumption is all '*' are wildcards
 
     def get_level(self, level):
         if level == "critical":
@@ -361,25 +364,31 @@ class ParseSigmaRules(object):
             if logic[-1] == '*': logic = logic[:-1]
         return re.escape(logic)
 
-    def handle_list(self, value):
+    def handle_list(self, value, b64):
         if isinstance(value, list):
+            if b64:
+                return ('|'.join([str(base64.b64encode(i.encode('ascii')), 'ascii') for i in value]))
             return ('|'.join([self.fixup_logic(i) for i in value]))
+        if b64:
+            return str(base64.b64encode(value.encode('ascii')), 'ascii')
         return self.fixup_logic(value)
 
     def convert_transforms(self, key, value):
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
-                return field, self.handle_list(value)
+                return field, self.handle_list(value, False), False
             if transform.lower() == 'contains|all':
-                return field, value
+                return field, value, False
             if transform.lower() == 'startswith':
-                return field, '^(?:' + self.handle_list(value) + ')'
+                return field, '^(?:' + self.handle_list(value, False) + ')', False
             if transform.lower() == 'endswith':
-                return field, '(?:' + self.handle_list(value) + ')$'
+                return field, '(?:' + self.handle_list(value, False) + ')$', False
             if transform.lower() == "re":
-                return field, value
-        return key, self.handle_list(value)
+                return field, value, False
+            if transform.lower() == "base64offset|contains":
+                return field, self.handle_list(value, True), True
+        return key, self.handle_list(value, False), False
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product):
@@ -390,20 +399,20 @@ class ParseSigmaRules(object):
                 if isinstance(v, dict):
                     for x, y in v.items():
                         rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-                        field, logic = self.convert_transforms(x, y)
-                        self.is_dict_list_or_not(logic, rules, rule, product, field, "no")
+                        field, logic, is_b64 = self.convert_transforms(x, y)
+                        self.is_dict_list_or_not(logic, rules, rule, product, field, "no", is_b64)
 
-    def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate):
+    def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
         """
             A condition set as keywords will have a list of fields to look for those keywords in.
         """
         if 'fields' in sigma_rule:
             for f in sigma_rule['fields']:
-                self.is_dict_list_or_not(logic, rules, rule, product, f, negate)
+                self.is_dict_list_or_not(logic, rules, rule, product, f, negate, is_b64)
                 rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             self.remove_wazuh_rule(rules, rule)
             return
-        rules.add_logic(rule, product, "full_log", negate, logic)
+        rules.add_logic(rule, product, "full_log", negate, logic, is_b64)
 
     #def is_dict_logic(self, values, rules, product, rule, negate, logic):
     #    """
@@ -417,15 +426,15 @@ class ParseSigmaRules(object):
     #        logic += '|' + v
     #    rules.add_logic(rule, product, k, negate, logic)
 
-    def is_dict_list_or_not(self, logic, rules, rule, product, field, negate):
+    def is_dict_list_or_not(self, logic, rules, rule, product, field, negate, is_b64):
         #if isinstance(logic, dict):
         #    self.is_dict_logic(logic, rules, product, rule, negate, '')
         #    return
         if isinstance(logic, list): # if logic is still a list then its contain|all logic
             for l in logic:
-                rules.add_logic(rule, product, field, negate, self.fixup_logic(l))
+                rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
             return
-        rules.add_logic(rule, product, field, negate, logic)
+        rules.add_logic(rule, product, field, negate, logic, is_b64)
 
     def handle_detection_nested_lists(self, values, key, value):
         """
@@ -472,7 +481,7 @@ class ParseSigmaRules(object):
         detections = self.get_detection(detection, token)
 
         for k, v in detections.items():
-            field, logic = self.convert_transforms(k, v)
+            field, logic, is_b64 = self.convert_transforms(k, v)
             name = rules.convert_field_name(product, field) # lets get what the field name will be in the Wazuh XML rules file
                                                             # as we need to handle the full_log field
             if name not in all_logic:
@@ -480,9 +489,9 @@ class ParseSigmaRules(object):
             if logic not in all_logic[name]: # do not add duplicate logic to a rule, even if its negated
                 all_logic[name].append(logic)
                 if k == 'keywords':
-                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate)
+                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
                     continue
-                self.is_dict_list_or_not(logic, rules, rule, product, field, negate)
+                self.is_dict_list_or_not(logic, rules, rule, product, field, negate, is_b64)
         
         return all_logic
 
