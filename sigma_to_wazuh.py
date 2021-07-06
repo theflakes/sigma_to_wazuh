@@ -367,10 +367,10 @@ class ParseSigmaRules(object):
     def handle_list(self, value, is_b64):
         if isinstance(value, list):
             if is_b64:
-                return ('|'.join([str(base64.b64encode(i.encode('ascii')), 'ascii') for i in value]))
+                return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value]))
             return ('|'.join([self.fixup_logic(i) for i in value]))
         if is_b64:
-            return str(base64.b64encode(value.encode('ascii')), 'ascii')
+            return str(base64.b64encode(value.encode('utf-8')), 'utf-8')
         return self.fixup_logic(value)
 
     def convert_transforms(self, key, value):
