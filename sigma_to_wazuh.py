@@ -415,8 +415,8 @@ class ParseSigmaRules(object):
             for k, v in detection.items():
                 if k == "condition": continue
                 if isinstance(v, dict):
+                    rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
                     for x, y in v.items():
-                        rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
                         field, logic, is_b64 = self.convert_transforms(x, y)
                         self.is_dict_list_or_not(logic, rules, rule, product, field, "no", is_b64)
 
