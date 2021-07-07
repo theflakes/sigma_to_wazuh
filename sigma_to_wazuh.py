@@ -550,20 +550,24 @@ class ParseSigmaRules(object):
                     negate = True
                 continue
             if t == '(':
-                level += 1
+                if negate:
+                    level += 1
                 continue
             if t == ')':
-                negate = False
+                if level == 0:
+                    negate = False
                 level -= 1
                 paren_set += 1
                 continue
             if t.lower() == 'or':
                 is_or = True
                 continue
-            if t.lower() == 'and': 
+            if t.lower() == 'and':
+                if level == 0:
+                    negate = False
                 is_or = False
                 continue
-            if is_or:
+            if is_or and not negate:
                 logic_paths.append(path)
                 if paren_set > 0:
                     path = []
@@ -574,7 +578,8 @@ class ParseSigmaRules(object):
                     path.append('not')
             path.append(t)
         logic_paths.append(path)
-
+        #print(sigma_rule['id'])
+        #print(logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
