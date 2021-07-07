@@ -20,7 +20,7 @@ import configparser
 import bs4, re
 import json
 import base64
-from xml.etree.ElementTree import Element, SubElement, Comment, tostring
+from xml.etree.ElementTree import Element, SubElement, Comment, tostring, fromstring
 from ruamel.yaml import YAML
 
 
@@ -353,9 +353,16 @@ class ParseSigmaRules(object):
                         .replace('(', ' ( ')\
                         .replace(')', ' ) ')
 
-    def remove_wazuh_rule(self, rules, rule):
-        rules.root.remove(rule) # destroy the extra rule that is created
+    def remove_wazuh_rule(self, rules, rule, sid):
+        wid = rule.get('id')
+        if wid == str(rules.rule_id - 1):
+            rules.rule_id -= 1
+        if wid in rules.track_rule_ids[sid]:
+            rules.track_rule_ids[sid].remove(wid)
+        if wid in rules.used_wazuh_ids_this_run:
+            rules.used_wazuh_ids_this_run.remove(wid)
         rules.rule_count -= 1   # decrement count of rules created
+        rules.root.remove(rule) # destroy the extra rule that is created
 
     def fixup_logic(self, logic):
         logic = str(logic)
@@ -408,9 +415,8 @@ class ParseSigmaRules(object):
                 return field, self.handle_list(value, True, False), True
         return key, self.handle_list(value, False, False), False
 
-    def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
+    def handle_one_of_them(self, rules, detection, sigma_rule, 
                             sigma_rule_link, product):
-        self.remove_wazuh_rule(rules, rule)
         if isinstance(detection, dict):
             for k, v in detection.items():
                 if k == "condition": continue
@@ -428,7 +434,7 @@ class ParseSigmaRules(object):
             for f in sigma_rule['fields']:
                 self.is_dict_list_or_not(logic, rules, rule, product, f, negate, is_b64)
                 rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-            self.remove_wazuh_rule(rules, rule)
+            self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
             return
         rules.add_logic(rule, product, "full_log", negate, logic, is_b64)
 
@@ -522,7 +528,7 @@ class ParseSigmaRules(object):
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             for p in path:
                 if p.lower() == '1_of_them':
-                    self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
+                    self.handle_one_of_them(rules, sigma_rule['detection'], 
                                         sigma_rule, sigma_rule_link, product)
                     break
                 if p == "not":
