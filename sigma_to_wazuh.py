@@ -238,7 +238,6 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             if_sid = SubElement(rule, 'if_sid')
             if_sid.text = self.config['if_sid_product'][product]
         
-
     def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
         level = sigma_rule['level']
         rule = self.init_rule(level, sigma_guid)
