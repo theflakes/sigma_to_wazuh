@@ -525,7 +525,6 @@ class ParseSigmaRules(object):
             all_logic = {}  # track all the logic used in a single rule to ensure we don't duplicat it
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
-            rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             for p in path:
                 if p.lower() == '1_of_them':
                     self.handle_one_of_them(rules, sigma_rule['detection'], 
@@ -534,6 +533,7 @@ class ParseSigmaRules(object):
                 if p == "not":
                     negate = "yes"
                     continue
+                rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
                 all_logic = self.handle_fields(rules, rule, p, negate, 
                                                 sigma_rule, sigma_rule_link, 
                                                 sigma_rule['detection'][p], 
