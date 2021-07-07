@@ -598,6 +598,9 @@ class TrackSkip(object):
         self.sigma_only_products = eval(self.config.get('sigma', 'convert_only_products'), {}, {})
         self.sigma_only_categories = eval(self.config.get('sigma', 'convert_only_categories'), {}, {})
         self.sigma_only_services = eval(self.config.get('sigma', 'convert_only_services'), {}, {})
+        self.sigma_skip_products = eval(self.config.get('sigma', 'skip_products'), {}, {})
+        self.sigma_skip_categories = eval(self.config.get('sigma', 'skip_categories'), {}, {})
+        self.sigma_skip_services = eval(self.config.get('sigma', 'skip_services'), {}, {})
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
@@ -623,10 +626,25 @@ class TrackSkip(object):
                     return True
         return False
 
+    def inc_skip_counters(self):
+        self.rules_skipped += 1
+        self.hard_skipped += 1
+
     def skip_rule(self, sigma_rule):
+        skip = False
         if sigma_rule["id"] in self.sigma_skip_ids: # skip specific Sigma rule GUIDs
-            self.rules_skipped += 1
-            self.hard_skipped += 1
+            skip = True
+        if 'category' in sigma_rule['logsource']:
+            if sigma_rule['logsource']['category'].lower() in self.sigma_skip_categories:
+                skip = True
+        if 'service' in sigma_rule['logsource']:
+            if sigma_rule['logsource']['service'].lower() in self.sigma_skip_services:
+                skip = True
+        if 'product' in sigma_rule['logsource']:
+            if sigma_rule['logsource']['product'].lower() in self.sigma_skip_products:
+                skip = True
+        if skip:
+            self.inc_skip_counters()
             return True
 
         if self.sigma_convert_all.lower() == 'yes': # convert all rules except explicit GUID skips
@@ -643,8 +661,7 @@ class TrackSkip(object):
             if sigma_rule['logsource']['product'].lower() in self.sigma_only_products:
                 skip = False
         if skip:
-            self.rules_skipped += 1
-            self.hard_skipped += 1
+            self.inc_skip_counters()
         return skip
 
     def skip_logic(self, condition, detection):
