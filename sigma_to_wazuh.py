@@ -389,7 +389,7 @@ class ParseSigmaRules(object):
                 if b64_offset:
                     return self.handle_b64offsets_list(value)
                 return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
-            return ('|'.join([self.fixup_logic(i) for i in value])).replace('=', '')
+            return ('|'.join([self.fixup_logic(i) for i in value]))
         if is_b64:
             if b64_offset:
                 return self.handle_b64offsets(value)
