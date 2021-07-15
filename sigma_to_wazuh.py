@@ -684,6 +684,7 @@ class TrackSkip(object):
         if condition.count('(') > 1 or (condition.count('(') == 1 and not condition.endswith(') ')):
             skip = True
             self.paren_skips += 1
+            logic.append('Paren')
         if 'timeframe' in detection:
             skip = True
             self.timeframe_skips += 1
