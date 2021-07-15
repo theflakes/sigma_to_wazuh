@@ -592,8 +592,8 @@ class ParseSigmaRules(object):
                     negate = False
             path.append(t)
         logic_paths.append(path)
-        print(sigma_rule['id'])
-        print(logic_paths)
+        #print(sigma_rule['id'])
+        #print(logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
@@ -751,7 +751,7 @@ def main():
             continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
-        print(conditions)
+        #print(conditions)
 
         skip_rule = stats.check_for_skip(rule, sigma_rule, sigma_rule['detection'], conditions)
         if skip_rule:
