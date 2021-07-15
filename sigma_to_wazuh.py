@@ -414,16 +414,17 @@ class ParseSigmaRules(object):
                 return field, self.handle_list(value, True, False), True
         return key, self.handle_list(value, False, False), False
 
-    def handle_one_of_them(self, rules, detection, sigma_rule, 
+    def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product):
         if isinstance(detection, dict):
             for k, v in detection.items():
                 if k == "condition": continue
                 if isinstance(v, dict):
-                    rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
                     for x, y in v.items():
                         field, logic, is_b64 = self.convert_transforms(x, y)
                         self.is_dict_list_or_not(logic, rules, rule, product, field, "no", is_b64)
+                    rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
+            self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
 
     def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
         """
@@ -524,15 +525,15 @@ class ParseSigmaRules(object):
             all_logic = {}  # track all the logic used in a single rule to ensure we don't duplicat it
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
+            rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             for p in path:
                 if p.lower() == '1_of_them':
-                    self.handle_one_of_them(rules, sigma_rule['detection'], 
+                    self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
                                         sigma_rule, sigma_rule_link, product)
                     break
                 if p == "not":
                     negate = "yes"
                     continue
-                rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
                 all_logic = self.handle_fields(rules, rule, p, negate, 
                                                 sigma_rule, sigma_rule_link, 
                                                 sigma_rule['detection'][p], 
@@ -543,9 +544,11 @@ class ParseSigmaRules(object):
         logic_paths = []    # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
         path = []           # minimum logic for one AND path
         negate = False      # are we to negate the logic?
+        neg_paren = 0       # track depth to which a not should be carried to
         level = 0           # track paren netsting levels
         paren_set = 0       # track number of paren sets
         is_or = False       # did we bump into an OR
+        is_and = False
         tokens = list(filter(None, tokens)) # remove all Null entries
         for t in tokens:
             if t.lower() == 'not':
@@ -556,12 +559,13 @@ class ParseSigmaRules(object):
                 continue
             if t == '(':
                 if negate:
-                    level += 1
+                    neg_paren += 1
+                level += 1
                 continue
             if t == ')':
-                if level == 0:
-                    negate = False
                 level -= 1
+                if neg_paren > 0:
+                    neg_paren -= 1
                 paren_set += 1
                 continue
             if t.lower() == 'or':
@@ -571,20 +575,25 @@ class ParseSigmaRules(object):
                 if level == 0:
                     negate = False
                 is_or = False
+                is_and = True
                 continue
             if is_or and not negate:
                 logic_paths.append(path)
-                if paren_set > 0:
+                if paren_set > 0 or level == 0 or not is_and:
                     path = []
-                else:
+                elif (len(path) > 1) and (path[-1] != 'not'):
                     path = path[:-1]
             if negate:
                 if path and path[-1] != 'not':
                     path.append('not')
+                elif not path:
+                    path.append('not')
+                if neg_paren == 0:
+                    negate = False
             path.append(t)
         logic_paths.append(path)
-        #print(sigma_rule['id'])
-        #print(logic_paths)
+        print(sigma_rule['id'])
+        print(logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
@@ -672,9 +681,9 @@ class TrackSkip(object):
             skip = True
             self.near_skips += 1
             logic.append('Near')
-        #if condition.count('(') > 1:
-        #    skip = True
-        #    self.paren_skips += 1
+        if condition.count('(') > 1 or (condition.count('(') == 1 and not condition.endswith(') ')):
+            skip = True
+            self.paren_skips += 1
         if 'timeframe' in detection:
             skip = True
             self.timeframe_skips += 1
@@ -742,6 +751,7 @@ def main():
             continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
+        print(conditions)
 
         skip_rule = stats.check_for_skip(rule, sigma_rule, sigma_rule['detection'], conditions)
         if skip_rule:
