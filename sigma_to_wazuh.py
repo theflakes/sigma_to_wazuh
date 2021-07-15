@@ -681,7 +681,7 @@ class TrackSkip(object):
             skip = True
             self.near_skips += 1
             logic.append('Near')
-        if condition.count('(') > 1 or (condition.count('(') == 1 and not condition.endswith(') ')):
+        if (condition.count('(') > 1 and ' or ' in condition) or (not ') or (' in condition and condition.count('(') == 2 ):
             skip = True
             self.paren_skips += 1
             logic.append('Paren')
