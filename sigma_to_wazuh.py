@@ -533,7 +533,7 @@ class ParseSigmaRules(object):
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-            if len(path) == 1 and path[0] in ['1_of_them', 'selection']:
+            if len(path) == 1:
                 self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
                                     sigma_rule, sigma_rule_link, product)
                 return
