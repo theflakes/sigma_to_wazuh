@@ -414,23 +414,27 @@ class ParseSigmaRules(object):
                 return field, self.handle_list(value, True, False), True
         return key, self.handle_list(value, False, False), False
 
-    def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link):
+    def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link, negate):
         for k, v in d.items():
             field, logic, is_b64 = self.convert_transforms(k, v)
-            self.is_dict_list_or_not(logic, rules, rule, product, field, "no", is_b64)
+            self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         return rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
-                            sigma_rule_link, product):
+                            sigma_rule_link, product, negate):
         if isinstance(detection, dict):
             for k, v in detection.items():
                 if k == "condition": continue
                 if isinstance(v, dict):
-                    rule = self.handle_dict(v, rules, rule, product, sigma_rule, sigma_rule_link)
+                    rule = self.handle_dict(v, rules, rule, product, sigma_rule, sigma_rule_link, negate)
+                    continue
                 if isinstance(v, list):
                     for d in v:
                         if isinstance(d, dict):
-                            rule = self.handle_dict(d, rules, rule, product, sigma_rule, sigma_rule_link)
+                            rule = self.handle_dict(d, rules, rule, product, sigma_rule, sigma_rule_link, negate)
+                    continue
+                field, logic, is_b64 = self.convert_transforms(k, v)
+                rules.add_logic(rule, product, field, negate, logic, is_b64)
             self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
 
     def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
@@ -439,7 +443,7 @@ class ParseSigmaRules(object):
         """
         if 'fields' in sigma_rule:
             for f in sigma_rule['fields']:
-                self.is_dict_list_or_not(logic, rules, rule, product, f, negate, is_b64)
+                self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, f, negate, is_b64)
                 rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
             return
@@ -457,15 +461,29 @@ class ParseSigmaRules(object):
     #        logic += '|' + v
     #    rules.add_logic(rule, product, k, negate, logic)
 
-    def is_dict_list_or_not(self, logic, rules, rule, product, field, negate, is_b64):
+    def is_dict_list_or_not(self, logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64):
         #if isinstance(logic, dict):
         #    self.is_dict_logic(logic, rules, product, rule, negate, '')
         #    return
         if isinstance(logic, list): # if logic is still a list then its contain|all logic
             for l in logic:
+                if isinstance(l, dict):
+                    rule = self.handle_dict(l, rules, rule, product, sigma_rule, sigma_rule_link, negate)
+                    continue
                 rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
             return
+                
         rules.add_logic(rule, product, field, negate, logic, is_b64)
+
+    def list_add_unique(self, append_to, append_from):
+        if isinstance(append_from, list):
+            for i in append_from:
+                if i not in append_to:
+                    append_to.append(i)
+            return append_to
+        if append_from not in append_to:
+            append_to.append(append_from)
+        return append_to
 
     def handle_detection_nested_lists(self, values, key, value):
         """
@@ -473,12 +491,12 @@ class ParseSigmaRules(object):
         """
         if key in values:   # do we already have same logic being applied to this field?
             if isinstance(values[key], list):
-                values[key].append(value)
+                values[key] = self.list_add_unique(values[key], value)
             else:
                 if isinstance(value, list):
-                    values[key] = [values[key], value]
+                    values[key] = self.list_add_unique(value, values[key])
                 else:
-                    values[key] = str(values[key]) + '|' + str(value)
+                    values[key] = self.list_add_unique([value], values[key])
         else:
             values[key] = value
         return values[key]
@@ -494,8 +512,8 @@ class ParseSigmaRules(object):
                 if isinstance(d, dict):
                     for k, v in d.items():
                         values[k] = self.handle_detection_nested_lists(values, k, v)
-                    continue
-                values[token] = detection # handle one deep detections
+                else:
+                    values[token] = detection
             return values
 
         for k, v in detection.items():
@@ -522,7 +540,7 @@ class ParseSigmaRules(object):
                 if k == 'keywords':
                     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
                     continue
-                self.is_dict_list_or_not(logic, rules, rule, product, field, negate, is_b64)
+                self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         
         return all_logic
 
@@ -535,7 +553,7 @@ class ParseSigmaRules(object):
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             if len(path) == 1:
                 self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
-                                    sigma_rule, sigma_rule_link, product)
+                                    sigma_rule, sigma_rule_link, product, negate)
                 return
             for p in path:
                 if p == "not":
