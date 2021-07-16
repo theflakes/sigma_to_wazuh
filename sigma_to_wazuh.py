@@ -414,16 +414,23 @@ class ParseSigmaRules(object):
                 return field, self.handle_list(value, True, False), True
         return key, self.handle_list(value, False, False), False
 
+    def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link):
+        for k, v in d.items():
+            field, logic, is_b64 = self.convert_transforms(k, v)
+            self.is_dict_list_or_not(logic, rules, rule, product, field, "no", is_b64)
+        rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
+
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product):
         if isinstance(detection, dict):
             for k, v in detection.items():
                 if k == "condition": continue
                 if isinstance(v, dict):
-                    for x, y in v.items():
-                        field, logic, is_b64 = self.convert_transforms(x, y)
-                        self.is_dict_list_or_not(logic, rules, rule, product, field, "no", is_b64)
-                    rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
+                    self.handle_dict(v, rules, rule, product, sigma_rule, sigma_rule_link)
+                if isinstance(v, list):
+                    for d in v:
+                        if isinstance(d, dict):
+                            self.handle_dict(d, rules, rule, product, sigma_rule, sigma_rule_link)
             self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
 
     def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
@@ -526,11 +533,11 @@ class ParseSigmaRules(object):
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
+            if len(path) == 1:
+                self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
+                                    sigma_rule, sigma_rule_link, product)
+                return
             for p in path:
-                if p.lower() == '1_of_them':
-                    self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
-                                        sigma_rule, sigma_rule_link, product)
-                    break
                 if p == "not":
                     negate = "yes"
                     continue
