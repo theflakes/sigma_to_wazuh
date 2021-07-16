@@ -475,49 +475,59 @@ class ParseSigmaRules(object):
                 
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
-    def list_add_unique(self, append_to, append_from):
-        if isinstance(append_from, list):
-            for i in append_from:
-                if i not in append_to:
-                    append_to.append(i)
-            return append_to
-        if append_from not in append_to:
-            append_to.append(append_from)
-        return append_to
+    def list_add_unique(self, record, values, key):
+        for d in values:
+            for k, v in d.items():
+                if k == key:
+                    v = [v]
+                    if isinstance(record[key], list):
+                        for i in record[key]:
+                            if i not in v:
+                                v.append(i)
+                    if record[key] not in v:
+                        v.append(record[key])
+                    return values
+        values.append(record)
+        return values
 
-    def handle_detection_nested_lists(self, values, key, value):
+    def handle_detection_nested_lists(self, values, record, key, value):
         """
             We can run into lists at various depths in Sigma deteciton logic.
         """
-        if key in values:   # do we already have same logic being applied to this field?
-            if isinstance(values[key], list):
-                values[key] = self.list_add_unique(values[key], value)
+        if not key.endswith('|all'):
+            if isinstance(record[key], list):
+                    values = self.list_add_unique(record, values, key)
             else:
                 if isinstance(value, list):
-                    values[key] = self.list_add_unique(value, values[key])
+                    values = self.list_add_unique(record, values, key)
                 else:
-                    values[key] = self.list_add_unique([value], values[key])
+                    values = self.list_add_unique(record, values, key)
         else:
-            values[key] = value
-        return values[key]
+            values.append(record)
+        return values
 
     def get_detection(self, detection, token):
         """
             Break appart detection logic into dictionaries for use in creating the Wazuh logic.
             e.g. {"fieldname|<startswith|endswith|etc.>": ["something to look for", "another thing to look for"]}
         """
-        values = {}
+        record = {}
+        values = []
         if isinstance(detection, list):
             for d in detection:
                 if isinstance(d, dict):
                     for k, v in d.items():
-                        values[k] = self.handle_detection_nested_lists(values, k, v)
+                        record[k] = v
+                        values = self.handle_detection_nested_lists(values, d, k, v)
                 else:
-                    values[token] = detection
+                    record[token] = detection
+                    values.append(record)
+                record = {}
             return values
 
         for k, v in detection.items():
-            values[k] = v
+            record[k] = v
+        values.append(record)
         return values
 
     def get_product(self, sigma_rule):
@@ -529,18 +539,19 @@ class ParseSigmaRules(object):
                         sigma_rule_link, detection, product, all_logic):
         detections = self.get_detection(detection, token)
 
-        for k, v in detections.items():
-            field, logic, is_b64 = self.convert_transforms(k, v)
-            name = rules.convert_field_name(product, field) # lets get what the field name will be in the Wazuh XML rules file
-                                                            # as we need to handle the full_log field
-            if name not in all_logic:
-                all_logic[name] = []
-            if logic not in all_logic[name]: # do not add duplicate logic to a rule, even if its negated
-                all_logic[name].append(logic)
-                if k == 'keywords':
-                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
-                    continue
-                self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
+        for d in detections:
+            for k, v in d.items():
+                field, logic, is_b64 = self.convert_transforms(k, v)
+                name = rules.convert_field_name(product, field) # lets get what the field name will be in the Wazuh XML rules file
+                                                                # as we need to handle the full_log field
+                if name not in all_logic:
+                    all_logic[name] = []
+                if logic not in all_logic[name]: # do not add duplicate logic to a rule, even if its negated
+                    all_logic[name].append(logic)
+                    if k == 'keywords':
+                        self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
+                        continue
+                    self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         
         return all_logic
 
