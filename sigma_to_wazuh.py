@@ -204,7 +204,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def add_sigma_link_info(self, rule, sigma_rule_link):
         link = SubElement(rule, 'info')
         link.set('type', 'link')
-        link.text = self.rules_link + sigma_rule_link
+        link.text = (self.rules_link + sigma_rule_link).replace('\\','/').replace('..','')
 
     def add_rule_comment(self, rule, misc):
         comment = Comment(misc.replace('--', ' - ')) # '--' not allowed in XML comment
