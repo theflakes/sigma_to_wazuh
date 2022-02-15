@@ -204,7 +204,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def add_sigma_link_info(self, rule, sigma_rule_link):
         link = SubElement(rule, 'info')
         link.set('type', 'link')
-        link.text = (self.rules_link + sigma_rule_link).replace('\\','/').replace('..','')
+        link.text = (self.rules_link + sigma_rule_link)
 
     def add_rule_comment(self, rule, misc):
         comment = Comment(misc.replace('--', ' - ')) # '--' not allowed in XML comment
@@ -228,6 +228,12 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
                 log_sources += value + ","
         groups = SubElement(rule, 'group')
         groups.text = log_sources
+
+    def add_if_group(self, rule, product):
+        if product in self.config['if_group']:
+            if_group = SubElement(rule, 'if_group')
+            if_group.text = self.config['if_group'][product]
+            return
 
     def add_if_sid(self, rule, sigma_guid, product):
         if sigma_guid in self.config['if_sid_guid']:
@@ -261,7 +267,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_options(rule, level, sigma_rule['id'])
         self.add_sources(rule, sigma_rule['logsource'])
         if 'product' in sigma_rule['logsource']:
-            self.add_if_sid(rule, sigma_rule['id'], sigma_rule['logsource']['product'])
+            self.add_if_group(rule, sigma_rule['logsource']['product'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
@@ -292,6 +298,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
         xml = re.sub(r'<if_sid>\n\s+', r'<if_sid>', xml)
         xml = re.sub(r'\s+</if_sid>', r'</if_sid>', xml)
+
+        xml = re.sub(r'<if_group>\n\s+', r'<if_group>', xml)
+        xml = re.sub(r'\s+</if_group>', r'</if_group>', xml)
 
         # fixup some output messed up by the above
         xml = re.sub(r'</rule></group>', r'</rule>\n</group>', xml)
@@ -414,12 +423,6 @@ class ParseSigmaRules(object):
                 return field, self.handle_list(value, True, False), True
         return key, self.handle_list(value, False, False), False
 
-    def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link, negate):
-        for k, v in d.items():
-            field, logic, is_b64 = self.convert_transforms(k, v)
-            self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
-        return rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-
     def handle_one_of_them(self, rules, rule, detection, sigma_rule, 
                             sigma_rule_link, product, negate):
         if isinstance(detection, dict):
@@ -449,30 +452,20 @@ class ParseSigmaRules(object):
             return
         rules.add_logic(rule, product, "full_log", negate, logic, is_b64)
 
-    #def is_dict_logic(self, values, rules, product, rule, negate, logic):
-    #    """
-    #        Function is not being used by any rule conversions. 
-    #        Possibly REFACTOR
-    #    """
-    #    for k, v in values.items():
-    #        if isinstance(v, dict):
-    #            self.is_dict_logic(v, rules, product, rule, negate, logic)
-    #            continue
-    #        logic += '|' + v
-    #    rules.add_logic(rule, product, k, negate, logic)
+    def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link, negate):
+        for k, v in d.items():
+            field, logic, is_b64 = self.convert_transforms(k, v)
+            self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
+        return rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
 
     def is_dict_list_or_not(self, logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64):
-        #if isinstance(logic, dict):
-        #    self.is_dict_logic(logic, rules, product, rule, negate, '')
-        #    return
         if isinstance(logic, list): # if logic is still a list then its contain|all logic
             for l in logic:
-                if isinstance(l, dict):
-                    rule = self.handle_dict(l, rules, rule, product, sigma_rule, sigma_rule_link, negate)
-                    continue
+                #if isinstance(l, dict):
+                #    rule = self.handle_dict(l, rules, rule, product, sigma_rule, sigma_rule_link, negate)
+                #    continue
                 rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
             return
-                
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
     def list_add_unique(self, record, values, key):
@@ -524,7 +517,6 @@ class ParseSigmaRules(object):
                     values.append(record)
                 record = {}
             return values
-
         for k, v in detection.items():
             record[k] = v
         values.append(record)
@@ -536,12 +528,17 @@ class ParseSigmaRules(object):
         return ""
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule, 
-                        sigma_rule_link, detection, product, all_logic):
+                        sigma_rule_link, detection, product, all_logic, all_of):
+        detections = []
         detections = self.get_detection(detection, token)
 
         for d in detections:
             for k, v in d.items():
-                field, logic, is_b64 = self.convert_transforms(k, v)
+                if all_of:
+                    k = k + "|contains|all"
+                    field, logic, is_b64 = self.convert_transforms(k, v)
+                else:
+                    field, logic, is_b64 = self.convert_transforms(k, v)
                 name = rules.convert_field_name(product, field) # lets get what the field name will be in the Wazuh XML rules file
                                                                 # as we need to handle the full_log field
                 if name not in all_logic:
@@ -552,29 +549,45 @@ class ParseSigmaRules(object):
                         self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
                         continue
                     self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
-        
         return all_logic
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
         product = self.get_product(sigma_rule)
+        all_of = False
         for path in logic_paths:
             all_logic = {}  # track all the logic used in a single rule to ensure we don't duplicat it
                             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             negate = "no"
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-            if len(path) == 1:
-                self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
-                                    sigma_rule, sigma_rule_link, product, negate)
-                return
             for p in path:
                 if p == "not":
                     negate = "yes"
                     continue
+                elif p == "all_of":
+                    all_of = True
+                    continue
+                elif p == "1_of_them":
+                    self.handle_one_of_them(rules, rule, sigma_rule['detection'], 
+                                    sigma_rule, sigma_rule_link, product, negate)
+                    continue
                 all_logic = self.handle_fields(rules, rule, p, negate, 
                                                 sigma_rule, sigma_rule_link, 
                                                 sigma_rule['detection'][p], 
-                                                product, all_logic)
+                                                product, all_logic, all_of)
+                all_of = False
                 negate = "no"
+
+    def handle_all_of(self, detections, token):
+        path = []
+        if token.endswith('*'):
+            for d in detections:
+                if d.startswith(token.replace('*','')):
+                    path.append(d)
+        else:
+            # all_of applied to just one detection is handled by adding all as Wazuh AND logic
+            path.append('all_of')
+            path.append(token)
+        return path
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
         logic_paths = []    # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
@@ -584,7 +597,8 @@ class ParseSigmaRules(object):
         level = 0           # track paren netsting levels
         paren_set = 0       # track number of paren sets
         is_or = False       # did we bump into an OR
-        is_and = False
+        is_and = False      # did we bump into an and
+        all_of = False      # handle "all of" directive
         tokens = list(filter(None, tokens)) # remove all Null entries
         for t in tokens:
             if t.lower() == 'not':
@@ -613,11 +627,16 @@ class ParseSigmaRules(object):
                 is_or = False
                 is_and = True
                 continue
+            if all_of:
+                # figure out to handle all of and field does not have '|' directive
+                path = self.handle_all_of(sigma_rule['detection'], t)
+                all_of = False
+                continue
             if is_or and not negate:
                 logic_paths.append(path)
                 if paren_set > 0 or level == 0 or not is_and:
                     path = []
-                elif (len(path) > 1) and (path[-1] != 'not'):
+                elif (len(path) > 1) and (path[-1] not in 'not'):
                     path = path[:-1]
             if negate:
                 if path and path[-1] != 'not':
@@ -626,6 +645,9 @@ class ParseSigmaRules(object):
                     path.append('not')
                 if neg_paren == 0:
                     negate = False
+            if t.lower() == 'all_of':
+                all_of = True
+                continue
             path.append(t)
         logic_paths.append(path)
         #print(sigma_rule['id'])
@@ -653,7 +675,6 @@ class TrackSkip(object):
         self.hard_skipped = 0
         self.rules_skipped = 0
         self.one_of_skipped = 0
-        self.all_of_skipped = 0
 
     def rule_not_loaded(self, rule, sigma_rule):
         if not sigma_rule:
@@ -729,10 +750,6 @@ class TrackSkip(object):
             skip = True
             self.one_of_skipped += 1
             logic.append('1_of')
-        if 'all_of' in condition:
-            skip = True
-            self.all_of_skipped += 1
-            logic.append('all_of')
         return skip, "{} {}".format(message, logic)
 
     def check_for_skip(self, rule, sigma_rule, detection, condition):
@@ -763,7 +780,6 @@ class TrackSkip(object):
         print("        Number of Sigma PAREN rules skipped: %s" % self.paren_skips)
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
         print("         Number of Sigma 1_OF rules skipped: %s" % self.one_of_skipped)
-        print("       Number of Sigma ALL_OF rules skipped: %s" % self.all_of_skipped)
         print("       Number of Sigma CONFIG rules skipped: %s" % self.hard_skipped)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
         print("-" * 55)
@@ -796,7 +812,7 @@ def main():
         #print(rule)
 
         # build the URL to the sigma rule, handle relative paths
-        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/')
+        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\','/').replace('..','')
 
         if isinstance(conditions, list):
             for condition in conditions: # create new rule for each condition, needs work
