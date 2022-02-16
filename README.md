@@ -1,6 +1,8 @@
 # sigma_to_wazuh
 Convert Sigma rules to Wazuh rules
 
+# NOTE: Some logic conversion is still broken due to the complexities of converting Sigma OR logic into Wazuh OR logic unfortunately.
+
 ## How to:
 Clone repository.  
 
