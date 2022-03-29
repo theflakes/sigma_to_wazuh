@@ -267,7 +267,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_options(rule, level, sigma_rule['id'])
         self.add_sources(rule, sigma_rule['logsource'])
         if 'product' in sigma_rule['logsource']:
-            self.add_if_sid(rule, sigma_rule['logsource']['product'])
+            self.add_if_sid(rule, sigma_guid, sigma_rule['logsource']['product'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
