@@ -235,14 +235,17 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             if_group.text = self.config['if_group'][product]
             return
 
-    def add_if_sid(self, rule, sigma_guid, product):
+    def add_if_sid(self, rule, sigma_guid, log_source):
+        target = ""
         if sigma_guid in self.config['if_sid_guid']:
+            target = self.config['if_sid_guid'][sigma_guid]
+        elif ('service' in log_source) and (log_source['service'] in self.config['if_sid_product']):
+            target = log_source['service']
+        elif log_source['product'] in self.config['if_sid_product']:
+            target = log_source['product']
+        if target:
             if_sid = SubElement(rule, 'if_sid')
-            if_sid.text = self.config['if_sid_guid'][sigma_guid]
-            return
-        if product in self.config['if_sid_product']:
-            if_sid = SubElement(rule, 'if_sid')
-            if_sid.text = self.config['if_sid_product'][product]
+            if_sid.text = self.config['if_sid_product'][target]
         
     def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
         level = sigma_rule['level']
@@ -267,7 +270,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_options(rule, level, sigma_rule['id'])
         self.add_sources(rule, sigma_rule['logsource'])
         if 'product' in sigma_rule['logsource']:
-            self.add_if_sid(rule, sigma_guid, sigma_rule['logsource']['product'])
+            self.add_if_sid(rule, sigma_guid, sigma_rule['logsource'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
