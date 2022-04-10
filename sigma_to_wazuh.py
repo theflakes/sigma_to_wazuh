@@ -411,6 +411,15 @@ class ParseSigmaRules(object):
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         return self.fixup_logic(value)
 
+    def handle_start_end_with(self, value, negate, start, end):
+        if negate == "yes" and isinstance(value, list):
+            result = []
+            for v in value:
+                result.append(start + self.fixup_logic(v) + end)
+            return result
+        else:
+            return start + self.handle_list(value, False, False) + end
+
     def convert_transforms(self, key, value, negate):
         if '|' in key:
             field, transform = key.split('|', 1)
@@ -419,19 +428,11 @@ class ParseSigmaRules(object):
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                if negate == "yes" and isinstance(value, list):
-                    result = []
-                    for v in value:
-                        result.append('^(?:' + self.fixup_logic(v) + ')')
-                    return field, result, False
-                return field, '^(?:' + self.handle_list(value, False, False) + ')', False
+                v = self.handle_start_end_with(value, negate, '^(?:', ')')
+                return field, v, False
             if transform.lower() == 'endswith':
-                if negate == "yes" and isinstance(value, list):
-                    result = []
-                    for v in value:
-                        result.append('(?:' + self.fixup_logic(v) + ')$')
-                    return field, result, False
-                return field, '(?:' + self.handle_list(value, False, False) + ')$', False
+                v = self.handle_start_end_with(value, negate, '(?:', ')$')
+                return field, v, False
             if transform.lower() == "re":
                 return field, value, False
             if transform.lower() == "base64offset|contains":
