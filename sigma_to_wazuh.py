@@ -419,21 +419,19 @@ class ParseSigmaRules(object):
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                if negate == "yes":
+                if negate == "yes" and isinstance(value, list):
                     result = []
                     for v in value:
-                        result.append('^(?:' + v + ')')
+                        result.append('^(?:' + self.fixup_logic(v) + ')')
                     return field, result, False
-                else:
-                    return field, '^(?:' + self.handle_list(value, False, False) + ')', False
+                return field, '^(?:' + self.handle_list(value, False, False) + ')', False
             if transform.lower() == 'endswith':
-                if negate == "yes":
+                if negate == "yes" and isinstance(value, list):
                     result = []
                     for v in value:
-                        result.append('(?:' + v + ')$')
+                        result.append('(?:' + self.fixup_logic(v) + ')$')
                     return field, result, False
-                else:
-                    return field, '(?:' + self.handle_list(value, False, False) + ')$', False
+                return field, '(?:' + self.handle_list(value, False, False) + ')$', False
             if transform.lower() == "re":
                 return field, value, False
             if transform.lower() == "base64offset|contains":
