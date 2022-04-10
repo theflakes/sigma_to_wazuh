@@ -143,8 +143,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
             spaces at end of logic are being chopped, therefore hacking this fix
         """
-        if value.startswith(
-                '(?i)'):  # if value start with this, it is a Sigma regex, remove it as it will be added again
+        if value.startswith('(?i)'):  # if value start with this, it is a Sigma regex, remove it as it will be added again
             value = value[4:]
         if value.endswith(' '):
             value = '(?:' + value + ')'
@@ -168,11 +167,11 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         logic.set('name', name)
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
+        value = str(value)
         if name == 'full_log':  # should we use .* or .+ to replace *
             logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+')
         else:
-            logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*',
-                                                                      r'.+')  # assumption is all '*' are wildcards
+            logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*', r'.+')  # assumption is all '*' are wildcards
 
     def get_level(self, level):
         if level == "critical":
@@ -389,11 +388,8 @@ class ParseSigmaRules(object):
 
     def handle_b64offsets_list(self, value):
         offset1 = ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
-        offset2 = ('|'.join([str(base64.b64encode((' ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=',
-                                                                                                                 '')[2:]
-        offset3 = ('|'.join([str(base64.b64encode(('  ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=',
-                                                                                                                  '')[
-                  3:]
+        offset2 = ('|'.join([str(base64.b64encode((' ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=','')[2:]
+        offset3 = ('|'.join([str(base64.b64encode(('  ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=','')[3:]
         return offset1 + "|" + offset2 + "|" + offset3
 
     def handle_b64offsets(self, value):
@@ -415,7 +411,7 @@ class ParseSigmaRules(object):
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         return self.fixup_logic(value)
 
-    def convert_transforms(self, key, value):
+    def convert_transforms(self, key, value, negate):
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
@@ -423,9 +419,21 @@ class ParseSigmaRules(object):
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                return field, '^(?:' + self.handle_list(value, False, False) + ')', False
+                if negate == "yes":
+                    result = []
+                    for v in value:
+                        result.append('^(?:' + v + ')')
+                    return field, result, False
+                else:
+                    return field, '^(?:' + self.handle_list(value, False, False) + ')', False
             if transform.lower() == 'endswith':
-                return field, '(?:' + self.handle_list(value, False, False) + ')$', False
+                if negate == "yes":
+                    result = []
+                    for v in value:
+                        result.append('(?:' + v + ')$')
+                    return field, result, False
+                else:
+                    return field, '(?:' + self.handle_list(value, False, False) + ')$', False
             if transform.lower() == "re":
                 return field, value, False
             if transform.lower() == "base64offset|contains":
@@ -448,7 +456,7 @@ class ParseSigmaRules(object):
                         if isinstance(d, dict):
                             rule = self.handle_dict(d, rules, rule, product, sigma_rule, sigma_rule_link, negate)
                     continue
-                field, logic, is_b64 = self.convert_transforms(k, v)
+                field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 rules.add_logic(rule, product, field, negate, logic, is_b64)
             self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
 
@@ -466,17 +474,18 @@ class ParseSigmaRules(object):
 
     def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link, negate):
         for k, v in d.items():
-            field, logic, is_b64 = self.convert_transforms(k, v)
+            field, logic, is_b64 = self.convert_transforms(k, v, negate)
             self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         return rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
 
     def is_dict_list_or_not(self, logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64):
-        if isinstance(logic, list):  # if logic is still a list then its contain|all logic
-            for l in logic:
-                # if isinstance(l, dict):
-                #    rule = self.handle_dict(l, rules, rule, product, sigma_rule, sigma_rule_link, negate)
-                #    continue
-                rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
+        if isinstance(logic, list):
+            if negate == "yes":
+                for l in logic:
+                    rules.add_logic(rule, product, field, negate, l, is_b64)
+                return
+            result =  ('|'.join([self.fixup_logic(l) for l in logic]))
+            rules.add_logic(rule, product, field, negate, result, is_b64)
             return
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
@@ -540,7 +549,7 @@ class ParseSigmaRules(object):
         return ""
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
-                      sigma_rule_link, detection, product, all_logic, all_of, one_of):
+                      sigma_rule_link, detection, product, all_logic, all_of):
         detections = []
         detections = self.get_detection(detection, token)
 
@@ -548,11 +557,10 @@ class ParseSigmaRules(object):
             for k, v in d.items():
                 if all_of:
                     k = k + "|contains|all"
-                    field, logic, is_b64 = self.convert_transforms(k, v)
+                    field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 else:
-                    field, logic, is_b64 = self.convert_transforms(k, v)
-                name = rules.convert_field_name(product,
-                                                field)  # lets get what the field name will be in the Wazuh XML rules file
+                    field, logic, is_b64 = self.convert_transforms(k, v, negate)
+                name = rules.convert_field_name(product, field)  # lets get what the field name will be in the Wazuh XML rules file
                 # as we need to handle the full_log field
                 if name not in all_logic:
                     all_logic[name] = []
@@ -561,8 +569,7 @@ class ParseSigmaRules(object):
                     if k == 'keywords':
                         self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
                         continue
-                    self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate,
-                                             is_b64)
+                    self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         return all_logic
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
@@ -570,7 +577,6 @@ class ParseSigmaRules(object):
         for path in logic_paths:
             negate = "no"
             all_of = False
-            one_of = False
             all_logic = {}  # track all the logic used in a single rule to ensure we don't duplicat it
             # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
@@ -588,7 +594,7 @@ class ParseSigmaRules(object):
                 all_logic = self.handle_fields(rules, rule, p, negate,
                                                sigma_rule, sigma_rule_link,
                                                sigma_rule['detection'][p],
-                                               product, all_logic, all_of, one_of)
+                                               product, all_logic, all_of)
                 negate = "no"
 
     def handle_all_of(self, detections, token):
@@ -607,7 +613,6 @@ class ParseSigmaRules(object):
         for d in detections:
             if d.startswith(token.replace('*', '')):
                 path.append(d)
-                print(path)
                 paths.append(path)
                 path = path[:-1]
         return paths.pop()
