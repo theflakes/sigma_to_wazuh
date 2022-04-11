@@ -428,7 +428,7 @@ class ParseSigmaRules(object):
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                return field, self.handle_start_end_with(value, negate, '(?:', ')$'), False
+                return field, self.handle_start_end_with(value, negate, '^(?:', ')'), False
             if transform.lower() == 'endswith':
                 return field, self.handle_start_end_with(value, negate, '(?:', ')$'), False
             if transform.lower() == "re":
@@ -710,7 +710,6 @@ class TrackSkip(object):
         self.experimental_skips = 0
         self.hard_skipped = 0
         self.rules_skipped = 0
-        self.one_of_skipped = 0
 
     def rule_not_loaded(self, rule, sigma_rule):
         if not sigma_rule:
@@ -783,10 +782,6 @@ class TrackSkip(object):
             skip = True
             self.timeframe_skips += 1
             logic.append('Timeframe')
-        # if '1_of ' in condition:
-        #    skip = True
-        #    self.one_of_skipped += 1
-        #    logic.append('1_of')
         return skip, "{} {}".format(message, logic)
 
     def check_for_skip(self, rule, sigma_rule, detection, condition):
@@ -816,7 +811,6 @@ class TrackSkip(object):
         print("    Number of Sigma TIMEFRAME rules skipped: %s" % self.timeframe_skips)
         print("        Number of Sigma PAREN rules skipped: %s" % self.paren_skips)
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
-        print("         Number of Sigma 1_OF rules skipped: %s" % self.one_of_skipped)
         print("       Number of Sigma CONFIG rules skipped: %s" % self.hard_skipped)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
         print("-" * 55)
