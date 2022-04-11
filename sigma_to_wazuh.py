@@ -428,13 +428,11 @@ class ParseSigmaRules(object):
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                v = self.handle_start_end_with(value, negate, '^(?:', ')')
-                return field, v, False
+                return field, self.handle_start_end_with(value, negate, '(?:', ')$'), False
             if transform.lower() == 'endswith':
-                v = self.handle_start_end_with(value, negate, '(?:', ')$')
-                return field, v, False
+                return field, self.handle_start_end_with(value, negate, '(?:', ')$'), False
             if transform.lower() == "re":
-                return field, value, False
+                return field, self.handle_start_end_with(value, negate, '', ''), False
             if transform.lower() == "base64offset|contains":
                 return field, self.handle_list(value, True, True), True
             if transform.lower() == "base64|contains":
