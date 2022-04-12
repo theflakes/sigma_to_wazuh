@@ -657,7 +657,6 @@ class ParseSigmaRules(object):
                 is_and = True
                 continue
             if all_of:
-                # figure out to handle all of and field does not have '|' directive
                 path = self.handle_all_of(sigma_rule['detection'], t)
                 all_of = False
                 continue
