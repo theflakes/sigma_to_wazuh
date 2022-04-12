@@ -232,23 +232,29 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         groups = SubElement(rule, 'group')
         groups.text = log_sources
 
-    def add_if_group(self, rule, product):
-        if product in self.config['if_group']:
+    def add_if_group(self, rule, log_source):
+        target = ""
+        if ('service' in log_source) and (log_source['service'] in self.config['if_group']):
+            target = log_source['service']
+        elif ('product' in log_source) and (log_source['product'] in self.config['if_group']):
+            target = log_source['product']
+        if target:
             if_group = SubElement(rule, 'if_group')
-            if_group.text = self.config['if_group'][product]
-            return
-
+            if_group.text = self.config['if_group'][target]
+            return True
+        return False
+        
     def add_if_sid(self, rule, sigma_guid, log_source):
         target = ""
         if sigma_guid in self.config['if_sid_guid']:
             target = self.config['if_sid_guid'][sigma_guid]
-        elif ('service' in log_source) and (log_source['service'] in self.config['if_sid_product']):
+        elif ('service' in log_source) and (log_source['service'] in self.config['if_sid']):
             target = log_source['service']
-        elif log_source['product'] in self.config['if_sid_product']:
+        elif log_source['product'] in self.config['if_sid']:
             target = log_source['product']
         if target:
             if_sid = SubElement(rule, 'if_sid')
-            if_sid.text = self.config['if_sid_product'][target]
+            if_sid.text = self.config['if_sid'][target]
 
     def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
         level = sigma_rule['level']
@@ -272,8 +278,12 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_description(rule, sigma_rule['title'])
         self.add_options(rule, level, sigma_rule['id'])
         self.add_sources(rule, sigma_rule['logsource'])
+        # prefer if_group over if_sid
+        # but be careful of OOM errors due to if_group use in too many rules
         if 'product' in sigma_rule['logsource']:
-            self.add_if_sid(rule, sigma_guid, sigma_rule['logsource'])
+            if_group = self.add_if_group(rule, sigma_rule['logsource'])
+            if not if_group:
+                self.add_if_sid(rule, sigma_guid, sigma_rule['logsource'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
@@ -512,7 +522,10 @@ class ParseSigmaRules(object):
             return sigma_rule['logsource']['product'].lower()
         return ""
 
-    def handle_negation(self, value, negate, contains_all, start, end):
+    def handle_or_to_and(self, value, negate, contains_all, start, end):
+        """
+            We have to split up contains_all and any negated fields into individual field statement in Wazuh rules
+        """
         if (negate == "yes" or contains_all) and isinstance(value, list):
             result = []
             for v in value:
@@ -522,24 +535,23 @@ class ParseSigmaRules(object):
             return start + self.handle_list(value, False, False) + end
 
     def convert_transforms(self, key, value, negate):
-        print(key)
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
-                return field, self.handle_negation(value, negate, False, '', ''), False
+                return field, self.handle_or_to_and(value, negate, False, '', ''), False
             if transform.lower() == 'contains|all':
-                return field, self.handle_negation(value, negate, True, '', ''), False
+                return field, self.handle_or_to_and(value, negate, True, '', ''), False
             if transform.lower() == 'startswith':
-                return field, self.handle_negation(value, negate, False, '^(?:', ')'), False
+                return field, self.handle_or_to_and(value, negate, False, '^(?:', ')'), False
             if transform.lower() == 'endswith':
-                return field, self.handle_negation(value, negate, False, '(?:', ')$'), False
+                return field, self.handle_or_to_and(value, negate, False, '(?:', ')$'), False
             if transform.lower() == "re":
-                return field, self.handle_negation(value, negate, False, '', ''), False
+                return field, self.handle_or_to_and(value, negate, False, '', ''), False
             if transform.lower() == "base64offset|contains":
-                return field, self.handle_negation(value, negate, False, '', ''), True
+                return field, self.handle_or_to_and(value, negate, False, '', ''), True
             if transform.lower() == "base64|contains":
-                return field, self.handle_negation(value, negate, False, '', ''), True
-        return key, self.handle_negation(value, negate, False, '', ''), False
+                return field, self.handle_or_to_and(value, negate, False, '', ''), True
+        return key, self.handle_or_to_and(value, negate, False, '', ''), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_logic, all_of):
@@ -688,8 +700,8 @@ class ParseSigmaRules(object):
             path.append(t)
         if not one_of_paths:
             logic_paths.append(path)
-        print(sigma_rule['id'])
-        print(logic_paths)
+        #print(sigma_rule['id'])
+        #print(logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
