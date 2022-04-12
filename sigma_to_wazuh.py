@@ -662,6 +662,7 @@ class ParseSigmaRules(object):
                 all_of = False
                 continue
             if one_of:
+                # one_of logic parsing is an utter kludge (e.g. what if 1_of comes at the beginning of condition followed by more logic?)
                 logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, logic_paths, negate))
                 one_of = False
                 one_of_paths = True
