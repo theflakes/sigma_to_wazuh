@@ -551,7 +551,7 @@ class ParseSigmaRules(object):
 
         for d in detections:
             for k, v in d.items():
-                if all_of:
+                if all_of or negate == "yes":
                     k = k + "|contains|all"
                     field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 else:
@@ -605,12 +605,18 @@ class ParseSigmaRules(object):
             path.append(token)
         return path
 
-    def handle_one_of(self, detections, token, path, paths):
+    def handle_one_of(self, detections, token, path, paths, negate):
         for d in detections:
             if d.startswith(token.replace('*', '')):
+                if not negate:
+                    path.append(d)
+                    paths.append(path)
+                    path = path[:-1]
+                    continue
+                path.append("not")
                 path.append(d)
-                paths.append(path)
-                path = path[:-1]
+        if negate:
+            paths.append(path)
         return paths.pop()
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
@@ -659,7 +665,7 @@ class ParseSigmaRules(object):
                 all_of = False
                 continue
             if one_of:
-                logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, logic_paths))
+                logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, logic_paths, negate))
                 one_of = False
                 one_of_paths = True
                 continue
@@ -669,6 +675,9 @@ class ParseSigmaRules(object):
                     path = []
                 elif (len(path) > 1) and (path[-1] not in 'not'):
                     path = path[:-1]
+            if t.lower() == '1_of':
+                one_of = True
+                continue
             if negate:
                 if path and path[-1] != 'not':
                     path.append('not')
@@ -678,11 +687,6 @@ class ParseSigmaRules(object):
                     negate = False
             if t.lower() == 'all_of':
                 all_of = True
-                continue
-            if t.lower() == '1_of':
-                if path and path[-1] == 'not':
-                    continue
-                one_of = True
                 continue
             path.append(t)
         if not one_of_paths:
