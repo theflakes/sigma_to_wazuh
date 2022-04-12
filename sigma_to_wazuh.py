@@ -410,34 +410,6 @@ class ParseSigmaRules(object):
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         return self.fixup_logic(value)
 
-    def handle_negation(self, value, negate, start, end):
-        if negate == "yes" and isinstance(value, list):
-            result = []
-            for v in value:
-                result.append(start + self.fixup_logic(v) + end)
-            return result
-        else:
-            return start + self.handle_list(value, False, False) + end
-
-    def convert_transforms(self, key, value, negate):
-        if '|' in key:
-            field, transform = key.split('|', 1)
-            if transform.lower() == 'contains':
-                return field, self.handle_negation(value, negate, '', ''), False
-            if transform.lower() == 'contains|all':
-                return field, value, False
-            if transform.lower() == 'startswith':
-                return field, self.handle_negation(value, negate, '^(?:', ')'), False
-            if transform.lower() == 'endswith':
-                return field, self.handle_negation(value, negate, '(?:', ')$'), False
-            if transform.lower() == "re":
-                return field, self.handle_negation(value, negate, '', ''), False
-            if transform.lower() == "base64offset|contains":
-                return field, self.handle_negation(value, negate, '', ''), True
-            if transform.lower() == "base64|contains":
-                return field, self.handle_negation(value, negate, '', ''), True
-        return key, self.handle_negation(value, negate, '', ''), False
-
     def handle_one_of_them(self, rules, rule, detection, sigma_rule,
                            sigma_rule_link, product, negate):
         if isinstance(detection, dict):
@@ -476,12 +448,8 @@ class ParseSigmaRules(object):
 
     def is_dict_list_or_not(self, logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64):
         if isinstance(logic, list):
-            if negate == "yes":
-                for l in logic:
-                    rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
-                return
-            result =  ('|'.join([self.fixup_logic(l) for l in logic]))
-            rules.add_logic(rule, product, field, negate, result, is_b64)
+            for l in logic:
+                rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
             return
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
@@ -544,6 +512,35 @@ class ParseSigmaRules(object):
             return sigma_rule['logsource']['product'].lower()
         return ""
 
+    def handle_negation(self, value, negate, contains_all, start, end):
+        if (negate == "yes" or contains_all) and isinstance(value, list):
+            result = []
+            for v in value:
+                result.append(start + self.fixup_logic(v) + end)
+            return result
+        else:
+            return start + self.handle_list(value, False, False) + end
+
+    def convert_transforms(self, key, value, negate):
+        print(key)
+        if '|' in key:
+            field, transform = key.split('|', 1)
+            if transform.lower() == 'contains':
+                return field, self.handle_negation(value, negate, False, '', ''), False
+            if transform.lower() == 'contains|all':
+                return field, self.handle_negation(value, negate, True, '', ''), False
+            if transform.lower() == 'startswith':
+                return field, self.handle_negation(value, negate, False, '^(?:', ')'), False
+            if transform.lower() == 'endswith':
+                return field, self.handle_negation(value, negate, False, '(?:', ')$'), False
+            if transform.lower() == "re":
+                return field, self.handle_negation(value, negate, False, '', ''), False
+            if transform.lower() == "base64offset|contains":
+                return field, self.handle_negation(value, negate, False, '', ''), True
+            if transform.lower() == "base64|contains":
+                return field, self.handle_negation(value, negate, False, '', ''), True
+        return key, self.handle_negation(value, negate, False, '', ''), False
+
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_logic, all_of):
         detections = []
@@ -556,16 +553,16 @@ class ParseSigmaRules(object):
                     field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 else:
                     field, logic, is_b64 = self.convert_transforms(k, v, negate)
-                name = rules.convert_field_name(product, field)  # lets get what the field name will be in the Wazuh XML rules file
+                #name = rules.convert_field_name(product, field)  # lets get what the field name will be in the Wazuh XML rules file
                 # as we need to handle the full_log field
-                if name not in all_logic:
-                    all_logic[name] = []
-                if logic not in all_logic[name]:  # do not add duplicate logic to a rule, even if its negated
-                    all_logic[name].append(logic)
-                    if k == 'keywords':
-                        self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
-                        continue
-                    self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
+                #if name not in all_logic:
+                #    all_logic[name] = []
+                #if logic not in all_logic[name]:  # do not add duplicate logic to a rule, even if its negated
+                #    all_logic[name].append(logic)
+                if k == 'keywords':
+                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
+                    continue
+                self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         return all_logic
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
