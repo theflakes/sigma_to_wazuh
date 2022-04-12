@@ -410,7 +410,7 @@ class ParseSigmaRules(object):
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         return self.fixup_logic(value)
 
-    def handle_start_end_with(self, value, negate, start, end):
+    def handle_negation(self, value, negate, start, end):
         if negate == "yes" and isinstance(value, list):
             result = []
             for v in value:
@@ -423,20 +423,20 @@ class ParseSigmaRules(object):
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
-                return field, self.handle_list(value, False, False), False
+                return field, self.handle_negation(value, negate, '', ''), False
             if transform.lower() == 'contains|all':
                 return field, value, False
             if transform.lower() == 'startswith':
-                return field, self.handle_start_end_with(value, negate, '^(?:', ')'), False
+                return field, self.handle_negation(value, negate, '^(?:', ')'), False
             if transform.lower() == 'endswith':
-                return field, self.handle_start_end_with(value, negate, '(?:', ')$'), False
+                return field, self.handle_negation(value, negate, '(?:', ')$'), False
             if transform.lower() == "re":
-                return field, self.handle_start_end_with(value, negate, '', ''), False
+                return field, self.handle_negation(value, negate, '', ''), False
             if transform.lower() == "base64offset|contains":
-                return field, self.handle_list(value, True, True), True
+                return field, self.handle_negation(value, negate, '', ''), True
             if transform.lower() == "base64|contains":
-                return field, self.handle_list(value, True, False), True
-        return key, self.handle_list(value, False, False), False
+                return field, self.handle_negation(value, negate, '', ''), True
+        return key, self.handle_negation(value, negate, '', ''), False
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule,
                            sigma_rule_link, product, negate):
@@ -551,7 +551,7 @@ class ParseSigmaRules(object):
 
         for d in detections:
             for k, v in d.items():
-                if all_of or negate == "yes":
+                if all_of:
                     k = k + "|contains|all"
                     field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 else:
