@@ -40,8 +40,7 @@ class BuildRules(object):
         self.rule_id_start = int(self.config.get('options', 'rule_id_start'))
         self.rule_id = self.rule_id_start
         self.out_file = self.config.get('sigma', 'out_file')
-        self.track_rule_ids_file = self.config.get('options',
-                                                   'rule_id_file')  # file that stores Sigma GUID to Wazuh rule ID mappings
+        self.track_rule_ids_file = self.config.get('options','rule_id_file')  # file that stores Sigma GUID to Wazuh rule ID mappings
         self.track_rule_ids = self.load_wazuh_to_sigma_id_mappings()  # in memory Dict of self.track_rule_ids_file contents
         self.used_wazuh_ids = self.get_used_wazuh_rule_ids()  # used Wazuh rule IDs used in previous runs
         self.used_wazuh_ids_this_run = []  # new Wazuh rule IDs consummed this run
@@ -418,7 +417,7 @@ class ParseSigmaRules(object):
                 result.append(start + self.fixup_logic(v) + end)
             return result
         else:
-            return start + self.handle_list(value, False, False) + end
+            return start + self.handle_list(self.fixup_logic(value), False, False) + end
 
     def convert_transforms(self, key, value, negate):
         if '|' in key:
@@ -843,8 +842,7 @@ def main():
         # print(rule)
 
         # build the URL to the sigma rule, handle relative paths
-        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\',
-                                                                                                           '/').replace(
+        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\','/').replace(
             '..', '')
 
         if isinstance(conditions, list):
