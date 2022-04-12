@@ -417,7 +417,7 @@ class ParseSigmaRules(object):
                 result.append(start + self.fixup_logic(v) + end)
             return result
         else:
-            return start + self.handle_list(self.fixup_logic(value), False, False) + end
+            return start + self.handle_list(value, False, False) + end
 
     def convert_transforms(self, key, value, negate):
         if '|' in key:
