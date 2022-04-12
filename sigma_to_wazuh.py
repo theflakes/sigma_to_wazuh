@@ -232,6 +232,20 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         groups = SubElement(rule, 'group')
         groups.text = log_sources
 
+    def add_if_group_guid(self, rule, sigma_guid):
+        if sigma_guid in self.config['if_group_guid']:
+            if_sid = SubElement(rule, 'if_group')
+            if_sid.text = self.config['if_group_guid'][sigma_guid]
+            return True
+        return False
+
+    def add_if_sid_guid(self, rule, sigma_guid):
+        if sigma_guid in self.config['if_sid_guid']:
+            if_sid = SubElement(rule, 'if_sid')
+            if_sid.text = self.config['if_sid_guid'][sigma_guid]
+            return True
+        return False
+
     def add_if_group(self, rule, log_source):
         target = ""
         if ('service' in log_source) and (log_source['service'] in self.config['if_group']):
@@ -244,11 +258,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             return True
         return False
         
-    def add_if_sid(self, rule, sigma_guid, log_source):
+    def add_if_sid(self, rule, log_source):
         target = ""
-        if sigma_guid in self.config['if_sid_guid']:
-            target = self.config['if_sid_guid'][sigma_guid]
-        elif ('service' in log_source) and (log_source['service'] in self.config['if_sid']):
+        if ('service' in log_source) and (log_source['service'] in self.config['if_sid']):
             target = log_source['service']
         elif log_source['product'] in self.config['if_sid']:
             target = log_source['product']
@@ -278,12 +290,13 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         self.add_description(rule, sigma_rule['title'])
         self.add_options(rule, level, sigma_rule['id'])
         self.add_sources(rule, sigma_rule['logsource'])
-        # prefer if_group over if_sid
-        # but be careful of OOM errors due to if_group use in too many rules
-        if 'product' in sigma_rule['logsource']:
-            if_group = self.add_if_group(rule, sigma_rule['logsource'])
-            if not if_group:
-                self.add_if_sid(rule, sigma_guid, sigma_rule['logsource'])
+        if_group_guid = self.add_if_group_guid(rule, sigma_guid)
+        if not if_group_guid:
+            if_sid_guid = self.add_if_sid_guid(rule, sigma_guid)
+            if not if_sid_guid and 'product' in sigma_rule['logsource']:
+                if_group = self.add_if_group(rule, sigma_rule['logsource'])
+                if not if_group:
+                    self.add_if_sid(rule, sigma_rule['logsource'])
         return rule
 
     def write_wazah_id_to_sigman_id(self):
