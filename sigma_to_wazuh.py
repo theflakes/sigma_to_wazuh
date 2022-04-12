@@ -478,7 +478,7 @@ class ParseSigmaRules(object):
         if isinstance(logic, list):
             if negate == "yes":
                 for l in logic:
-                    rules.add_logic(rule, product, field, negate, l, is_b64)
+                    rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
                 return
             result =  ('|'.join([self.fixup_logic(l) for l in logic]))
             rules.add_logic(rule, product, field, negate, result, is_b64)
