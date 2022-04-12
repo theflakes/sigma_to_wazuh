@@ -659,6 +659,8 @@ class ParseSigmaRules(object):
                 all_of = False
                 continue
             if one_of:
+                if path and path[-1] == 'not':
+                    continue
                 logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, logic_paths))
                 one_of = False
                 one_of_paths = True
