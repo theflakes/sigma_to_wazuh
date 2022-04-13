@@ -473,7 +473,7 @@ class ParseSigmaRules(object):
     def is_dict_list_or_not(self, logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64):
         if isinstance(logic, list):
             for l in logic:
-                rules.add_logic(rule, product, field, negate, self.fixup_logic(l), is_b64)
+                rules.add_logic(rule, product, field, negate, l, is_b64)
             return
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
