@@ -537,7 +537,7 @@ class ParseSigmaRules(object):
 
     def handle_or_to_and(self, value, negate, contains_all, start, end):
         """
-            We have to split up contains_all and any negated fields into individual field statement in Wazuh rules
+            We have to split up contains_all and any negated fields into individual field statements in Wazuh rules
         """
         if (negate == "yes" or contains_all) and isinstance(value, list):
             result = []
