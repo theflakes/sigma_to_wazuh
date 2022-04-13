@@ -22,6 +22,7 @@ import json
 import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring, fromstring
 from ruamel.yaml import YAML
+from binarytree import Node
 
 
 class BuildRules(object):
@@ -596,7 +597,6 @@ class ParseSigmaRules(object):
             negate = "no"
             all_of = False
             all_logic = {}  # track all the logic used in a single rule to ensure we don't duplicat it
-            # e.g. https://github.com/SigmaHQ/sigma/tree/master/rules/network/zeek/zeek_smb_converted_win_susp_psexec.yml
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             for p in path:
                 if p == "not":
@@ -642,16 +642,23 @@ class ParseSigmaRules(object):
         return paths.pop()
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
-        logic_paths = []  # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
-        path = []  # minimum logic for one AND path
-        negate = False  # are we to negate the logic?
-        neg_paren = 0  # track depth to which a not should be carried to
-        level = 0  # track paren nesting levels
-        paren_set = 0  # track number of paren sets
-        is_or = False  # did we bump into an OR
-        is_and = False  # did we bump into an and
-        all_of = False  # handle "all of" directive
-        one_of = False
+        """
+            Need to rewrite to parse into a binary tree using preorder traversal to convert all
+            Sigma condition logic into Wazuh AND logic.
+            See: 
+                https://www.section.io/engineering-education/binary-tree-data-structure-python/
+                https://www.geeksforgeeks.org/binarytree-module-in-python/
+        """
+        logic_paths = []        # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
+        path = []               # minimum logic for one AND path
+        negate = False          # are we to negate the logic?
+        neg_paren = 0           # track depth to which a not should be carried to
+        level = 0               # track paren nesting levels
+        paren_set = 0           # track number of paren sets
+        is_or = False           # did we bump into an OR
+        is_and = False          # did we bump into an and
+        all_of = False          # handle "all of" directive
+        one_of = False          # handle "1 of" directive
         one_of_paths = False
         tokens = list(filter(None, tokens))  # remove all Null entries
         for t in tokens:
