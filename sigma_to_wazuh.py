@@ -572,7 +572,6 @@ class ParseSigmaRules(object):
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_of):
-        detections = []
         detections = self.get_detection(detection, token)
 
         for d in detections:
@@ -703,8 +702,8 @@ class ParseSigmaRules(object):
             path.append(t)
         if not one_of_paths:
             logic_paths.append(path)
-        print(sigma_rule['id'])
-        print(logic_paths)
+        #print(sigma_rule['id'])
+        #print(logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
@@ -860,8 +859,7 @@ def main():
         # print(rule)
 
         # build the URL to the sigma rule, handle relative paths
-        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\','/').replace(
-            '..', '')
+        partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\','/').replace('..', '')
 
         if isinstance(conditions, list):
             for condition in conditions:  # create new rule for each condition, needs work
