@@ -401,12 +401,15 @@ class ParseSigmaRules(object):
         rules.rule_count -= 1  # decrement count of rules created
         rules.root.remove(rule)  # destroy the extra rule that is created
 
-    def fixup_logic(self, logic):
+    def fixup_logic(self, logic, is_regex):
         logic = str(logic)
         if len(logic) > 2:  # when converting to Wazuh pcre2 expressions, we don't need start and end wildcards
             if logic[0] == '*': logic = logic[1:]
             if logic[-1] == '*': logic = logic[:-1]
-        return re.escape(logic)
+        if is_regex:
+            return logic
+        else:
+            return re.escape(logic)
 
     def handle_b64offsets_list(self, value):
         offset1 = ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
@@ -420,18 +423,18 @@ class ParseSigmaRules(object):
         offset3 = (str(base64.b64encode(('  ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[3:]
         return offset1 + "|" + offset2 + "|" + offset3
 
-    def handle_list(self, value, is_b64, b64_offset):
+    def handle_list(self, value, is_b64, b64_offset, is_regex):
         if isinstance(value, list):
             if is_b64:
                 if b64_offset:
                     return self.handle_b64offsets_list(value)
                 return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
-            return ('|'.join([self.fixup_logic(i) for i in value]))
+            return ('|'.join([self.fixup_logic(i, is_regex) for i in value]))
         if is_b64:
             if b64_offset:
                 return self.handle_b64offsets(value)
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
-        return self.fixup_logic(value)
+        return self.fixup_logic(value, is_regex)
 
     def handle_one_of_them(self, rules, rule, detection, sigma_rule,
                            sigma_rule_link, product, negate):
@@ -535,36 +538,37 @@ class ParseSigmaRules(object):
             return sigma_rule['logsource']['product'].lower()
         return ""
 
-    def handle_or_to_and(self, value, negate, contains_all, start, end):
+    def handle_or_to_and(self, value, negate, contains_all, start, end, is_regex):
         """
             We have to split up contains_all and any negated fields into individual field statements in Wazuh rules
         """
         if (negate == "yes" or contains_all) and isinstance(value, list):
             result = []
             for v in value:
-                result.append(start + self.fixup_logic(v) + end)
+                v = self.fixup_logic(v, is_regex)
+                result.append(start + v + end)
             return result
         else:
-            return start + self.handle_list(value, False, False) + end
+            return start + self.handle_list(value, False, False, is_regex) + end
 
     def convert_transforms(self, key, value, negate):
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
-                return field, self.handle_or_to_and(value, negate, False, '', ''), False
+                return field, self.handle_or_to_and(value, negate, False, '', '', False), False
             if transform.lower() == 'contains|all':
-                return field, self.handle_or_to_and(value, negate, True, '', ''), False
+                return field, self.handle_or_to_and(value, negate, True, '', '', False), False
             if transform.lower() == 'startswith':
-                return field, self.handle_or_to_and(value, negate, False, '^(?:', ')'), False
+                return field, self.handle_or_to_and(value, negate, False, '^(?:', ')', False), False
             if transform.lower() == 'endswith':
-                return field, self.handle_or_to_and(value, negate, False, '(?:', ')$'), False
+                return field, self.handle_or_to_and(value, negate, False, '(?:', ')$', False), False
             if transform.lower() == "re":
-                return field, self.handle_or_to_and(value, negate, False, '', ''), False
+                return field, self.handle_or_to_and(value, negate, False, '', '', True), False
             if transform.lower() == "base64offset|contains":
-                return field, self.handle_or_to_and(value, negate, False, '', ''), True
+                return field, self.handle_or_to_and(value, negate, False, '', '', False), True
             if transform.lower() == "base64|contains":
-                return field, self.handle_or_to_and(value, negate, False, '', ''), True
-        return key, self.handle_or_to_and(value, negate, False, '', ''), False
+                return field, self.handle_or_to_and(value, negate, False, '', '', False), True
+        return key, self.handle_or_to_and(value, negate, False, '', '', False), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_of):
