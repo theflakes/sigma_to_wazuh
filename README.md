@@ -6,7 +6,7 @@ Convert Sigma rules to Wazuh rules
 ## How to:
 Clone repository.  
 
-Install Python3 packages: ```pip3 install lxml bs4 ruamel.yaml binarytree```
+Install Python3 packages: ```pip3 install lxml bs4 ruamel.yaml```
 
 Clone Sigma repository: [https://github.com/SigmaHQ/sigma](https://github.com/SigmaHQ/sigma)
 

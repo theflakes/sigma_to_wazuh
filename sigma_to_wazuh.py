@@ -22,7 +22,6 @@ import json
 import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring, fromstring
 from ruamel.yaml import YAML
-from binarytree import Node
 
 
 class BuildRules(object):
