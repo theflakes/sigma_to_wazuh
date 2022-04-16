@@ -499,15 +499,9 @@ class ParseSigmaRules(object):
             We can run into lists at various depths in Sigma deteciton logic.
         """
         if not key.endswith('|all'):
-            if isinstance(record[key], list):
-                values = self.list_add_unique(record, values, key)
-            else:
-                if isinstance(value, list):
-                    values = self.list_add_unique(record, values, key)
-                else:
-                    values = self.list_add_unique(record, values, key)
+            values = self.list_add_unique(record, values, key)
         else:
-            values.append(record)
+            values.append([record])
         return values
 
     def get_detection(self, detection, token):
@@ -570,21 +564,28 @@ class ParseSigmaRules(object):
                 return field, self.handle_or_to_and(value, negate, False, '', '', False), True
         return key, self.handle_or_to_and(value, negate, False, '', '', False), False
 
+    def handle_detection(self, rules, rule, negate, sigma_rule, sigma_rule_link, detections, product, all_of):
+        for k, v in detections.items():
+            if all_of:
+                k = k + "|contains|all"
+                field, logic, is_b64 = self.convert_transforms(k, v, negate)
+            else:
+                field, logic, is_b64 = self.convert_transforms(k, v, negate)
+            if k == 'keywords':
+                self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
+                continue
+            self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
+
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_of):
         detections = self.get_detection(detection, token)
-
+        print(detections)
         for d in detections:
-            for k, v in d.items():
-                if all_of:
-                    k = k + "|contains|all"
-                    field, logic, is_b64 = self.convert_transforms(k, v, negate)
-                else:
-                    field, logic, is_b64 = self.convert_transforms(k, v, negate)
-                if k == 'keywords':
-                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
-                    continue
-                self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
+            if isinstance(d, list):
+                for i in d:
+                    self.handle_detection(rules, rule, negate, sigma_rule, sigma_rule_link, i, product, all_of)
+            else:
+                self.handle_detection(rules, rule, negate, sigma_rule, sigma_rule_link, d, product, all_of)
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
         product = self.get_product(sigma_rule)
@@ -702,8 +703,8 @@ class ParseSigmaRules(object):
             path.append(t)
         if not one_of_paths:
             logic_paths.append(path)
-        #print(sigma_rule['id'])
-        #print(logic_paths)
+        print("    RULE ID: %s" % (sigma_rule['id']))
+        print("LOGIC PATHS: %s" % (logic_paths))
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
