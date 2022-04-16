@@ -22,6 +22,12 @@ import json
 import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring, fromstring
 from ruamel.yaml import YAML
+import inspect
+import colorama
+from colorama import Fore
+from optparse import OptionParser
+
+DEBUG = False
 
 
 class BuildRules(object):
@@ -479,29 +485,47 @@ class ParseSigmaRules(object):
             return
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
+
+
+
+    def add_unique(self, record, values, key):
+        for k, v in values.items():
+            if k == key:
+                v = [v]
+                if isinstance(record[key], list):
+                    for i in record[key]:
+                        if i not in v:
+                            v.append(i)
+                if record[key] not in v:
+                    v.append(record[key])
+                return v
+
     def list_add_unique(self, record, values, key):
-        for d in values:
-            for k, v in d.items():
-                if k == key:
-                    v = [v]
-                    if isinstance(record[key], list):
-                        for i in record[key]:
-                            if i not in v:
-                                v.append(i)
-                    if record[key] not in v:
-                        v.append(record[key])
-                    return values
+        logger("Values", values)
+        if isinstance(values, list):
+            for v in values:
+                logger("Value", v)
+                if isinstance(v, list):
+                    for l in v:
+                        values = self.add_unique(record, l, key)
+                else:
+                    values = self.add_unique(record, v, key)
+            return values
         values.append(record)
+        logger("Values", values)
         return values
 
     def handle_detection_nested_lists(self, values, record, key, value):
         """
             We can run into lists at various depths in Sigma deteciton logic.
         """
+        logger("Nested", record)
+        logger("Value", value)
         if not key.endswith('|all'):
             values = self.list_add_unique(record, values, key)
         else:
             values.append([record])
+        logger("Values", values)
         return values
 
     def get_detection(self, detection, token):
@@ -526,6 +550,9 @@ class ParseSigmaRules(object):
             record[k] = v
         values.append(record)
         return values
+
+
+
 
     def get_product(self, sigma_rule):
         if 'logsource' in sigma_rule and 'product' in sigma_rule['logsource']:
@@ -579,7 +606,7 @@ class ParseSigmaRules(object):
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_of):
         detections = self.get_detection(detection, token)
-        print(detections)
+        logger("Detections", detections)
         for d in detections:
             if isinstance(d, list):
                 for i in d:
@@ -703,8 +730,8 @@ class ParseSigmaRules(object):
             path.append(t)
         if not one_of_paths:
             logic_paths.append(path)
-        print("    RULE ID: %s" % (sigma_rule['id']))
-        print("LOGIC PATHS: %s" % (logic_paths))
+        logger("Rule ID", sigma_rule['id'])
+        logger("Logic paths", logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
@@ -875,6 +902,22 @@ def main():
 
     stats.report_stats(convert.error_count, wazuh_rules.rule_count, len(convert.sigma_rules))
 
+def logger(desc, log):
+    if DEBUG:
+        print(f"{Fore.MAGENTA}%s: {Fore.WHITE}%s - {Fore.YELLOW}%s{Fore.RESET}" % (inspect.stack()[1][3], desc, log))
+
+def get_parser():
+    parser = OptionParser()
+    parser.add_option("-d", "--debug",
+                        action="store_true",
+                        dest="debug",
+                        default=False,
+                        help="Enable debugging output.")
+    return parser
 
 if __name__ == "__main__":
+    parser = get_parser()
+    (options, args) = parser.parse_args()
+    if options.debug:
+        DEBUG = True
     main()
