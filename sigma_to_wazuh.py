@@ -20,8 +20,20 @@ import configparser
 import bs4, re
 import json
 import base64
-from xml.etree.ElementTree import Element, SubElement, Comment, tostring, fromstring
+from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
+from sty import fg, bg, ef, rs
+
+
+class Notify(object):
+    def __init__(self):
+        pass
+
+    def info(self, message):
+        print(fg.yellow + "[*] " + fg.rs + "%s" % message)
+
+    def error(self, message):
+        print(fg.red + "[!] " + fg.rs + "%s" % message)
 
 
 class BuildRules(object):
@@ -65,7 +77,7 @@ class BuildRules(object):
             with open(self.track_rule_ids_file, 'r') as ids:
                 return json.load(ids)
         except:
-            print("ERROR loading rule id tracking file: %s" % self.track_rule_ids_file)
+            Notify.error(self, "ERROR loading rule id tracking file: %s" % self.track_rule_ids_file)
             return {}
 
     def get_used_wazuh_rule_ids(self):
@@ -702,8 +714,8 @@ class ParseSigmaRules(object):
             path.append(t)
         if not one_of_paths:
             logic_paths.append(path)
-        #print(sigma_rule['id'])
-        #print(logic_paths)
+        #Notify.error(self, sigma_rule['id'])
+        #Notify.error(self, logic_paths)
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
@@ -730,7 +742,7 @@ class TrackSkip(object):
     def rule_not_loaded(self, rule, sigma_rule):
         if not sigma_rule:
             self.rules_skipped += 1
-            print("ERROR loading Sigma rule: " + rule)
+            Notify.error(self, "ERROR loading Sigma rule: " + rule)
             return True
         return False
 
@@ -806,16 +818,16 @@ class TrackSkip(object):
             This procedure will skip Sigma rules we are not ready to parse.
         """
         if self.skip_experimental_rules(sigma_rule):
-            print("SKIPPED Sigma rule: " + rule)
+            Notify.info(self, "SKIPPED Sigma rule: " + rule)
             return True
         if self.skip_rule(sigma_rule):
-            print("HARD SKIPPED Sigma rule: " + rule)
+            Notify.info(self, "HARD SKIPPED Sigma rule: " + rule)
             return True
 
         skip, message = self.skip_logic(condition, detection)
         if skip:
             self.rules_skipped += 1
-            print(message + ": " + rule)
+            Notify.info(self, message + ": " + rule)
 
         return skip
 
@@ -844,6 +856,7 @@ def main():
     convert = ParseSigmaRules()
     wazuh_rules = BuildRules()
     stats = TrackSkip()
+    notify = Notify()
 
     for rule in convert.sigma_rules:
         sigma_rule = convert.load_sigma_rule(rule)
@@ -851,12 +864,12 @@ def main():
             continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
-        # print(conditions)
+        # notify.info(conditions)
 
         skip_rule = stats.check_for_skip(rule, sigma_rule, sigma_rule['detection'], conditions)
         if skip_rule:
             continue
-        # print(rule)
+        # notify.info(rule)
 
         # build the URL to the sigma rule, handle relative paths
         partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\','/').replace('..', '')
