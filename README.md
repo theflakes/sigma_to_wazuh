@@ -6,7 +6,7 @@ Convert Sigma rules to Wazuh rules
 ## How to:
 Clone repository.  
 
-Install Python3 packages: ```pip3 install lxml bs4 ruamel.yaml sty```
+Install Python3 packages: ```pip3 install lxml bs4 ruamel.yaml```
 
 Clone Sigma repository: [https://github.com/SigmaHQ/sigma](https://github.com/SigmaHQ/sigma)
 
@@ -56,11 +56,6 @@ There are other things that need to be accounted for:
 - "all of", "one of", etc.
 
 Clone the Sigma rules repository and point the "directory" variable to the Sigma rules cloned repository directory location.
-
-## Required Python packages:  
-- lxml
-- BeautifulSoup 4: bs4
-- ruamel.yaml
 
 ## References:  
 Sigma Rules: [https://github.com/SigmaHQ/sigma](https://github.com/SigmaHQ/sigma)  

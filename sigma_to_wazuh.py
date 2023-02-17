@@ -22,18 +22,22 @@ import json
 import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
-from sty import fg, bg, ef, rs
 
+debug = "yes"
 
 class Notify(object):
     def __init__(self):
         pass
 
     def info(self, message):
-        print(fg.yellow + "[*] " + fg.rs + "%s" % message)
+        print("[#] %s" % message)
 
     def error(self, message):
-        print(fg.red + "[!] " + fg.rs + "%s" % message)
+        print("[!] %s" % message)
+        
+    def debug(self, message):
+        if debug == "yes":
+            print("[*] %s" % message)
 
 
 class BuildRules(object):
@@ -542,7 +546,7 @@ class ParseSigmaRules(object):
             return values
         for k, v in detection.items():
             record[k] = v
-        values.append(record)
+            values.append(record)
         return values
 
     def get_product(self, sigma_rule):
@@ -587,6 +591,7 @@ class ParseSigmaRules(object):
         detections = self.get_detection(detection, token)
 
         for d in detections:
+            Notify.debug(self, "Detection: {}".format(d))
             for k, v in d.items():
                 if all_of:
                     k = k + "|contains|all"
@@ -605,6 +610,7 @@ class ParseSigmaRules(object):
             all_of = False
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
             for p in path:
+                Notify.debug(self, "Token: {}".format(p))
                 if p == "not":
                     negate = "yes"
                     continue
@@ -627,25 +633,17 @@ class ParseSigmaRules(object):
             for d in detections:
                 if d.startswith(token.replace('*', '')):
                     path.append(d)
-        else:
-            # all_of applied to just one detection is handled by adding all as Wazuh AND logic
-            path.append('all_of')
-            path.append(token)
+        Notify.debug(self, "All of: {}".format(path))
         return path
 
-    def handle_one_of(self, detections, token, path, paths, negate):
+    def handle_one_of(self, detections, token, path, negate):
         for d in detections:
             if d.startswith(token.replace('*', '')):
-                if not negate:
-                    path.append(d)
-                    paths.append(path)
-                    path = path[:-1]
-                    continue
-                path.append("not")
+                if negate:
+                    path.append("not")
                 path.append(d)
-        if negate:
-            paths.append(path)
-        return paths.pop()
+        Notify.debug(self, "One of: {}".format(path))
+        return path
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
         logic_paths = []        # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
@@ -658,7 +656,12 @@ class ParseSigmaRules(object):
         one_of = False          # handle "1 of" directive
         one_of_paths = False
         tokens = list(filter(None, tokens))  # remove all Null entries
+        Notify.debug(self, "*" * 80)
+        Notify.debug(self, "Rule ID: " + sigma_rule['id'])
+        Notify.debug(self, "Rule Link: " + sigma_rule_link)
+        Notify.debug(self, "Tokens: {}".format(tokens))
         for t in tokens:
+            Notify.debug(self, "Logic Path: {}".format(path))
             if t.lower() == 'not':
                 if negate['n']:
                     negate['n'] = False
@@ -685,12 +688,12 @@ class ParseSigmaRules(object):
                 is_and = True
                 continue
             if all_of:
-                path = self.handle_all_of(sigma_rule['detection'], t)
+                path.append(self.handle_all_of(sigma_rule['detection'], t))
                 all_of = False
                 continue
             if one_of:
                 # one_of logic parsing is an utter kludge (e.g. what if 1_of comes at the beginning of condition followed by more logic?)
-                logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, logic_paths, negate['n']))
+                logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, negate['n']))
                 one_of = False
                 one_of_paths = True
                 continue
@@ -712,10 +715,8 @@ class ParseSigmaRules(object):
                 all_of = True
                 continue
             path.append(t)
-        if not one_of_paths:
-            logic_paths.append(path)
-        #Notify.error(self, sigma_rule['id'])
-        #Notify.error(self, logic_paths)
+        logic_paths.append(path)
+        Notify.debug(self, "Logic Paths: {}".format(logic_paths))
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
@@ -864,12 +865,12 @@ def main():
             continue
 
         conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
-        # notify.info(conditions)
+        #notify.debug(conditions)
 
         skip_rule = stats.check_for_skip(rule, sigma_rule, sigma_rule['detection'], conditions)
         if skip_rule:
             continue
-        # notify.info(rule)
+        #notify.debug(rule)
 
         # build the URL to the sigma rule, handle relative paths
         partial_url_path = rule.replace('/sigma/rules', '').replace('../', '/').replace('./', '/').replace('\\','/').replace('..', '')
