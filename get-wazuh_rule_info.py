@@ -45,8 +45,8 @@ class WazuhRules(object):
 class Report(object):
     def __init__(self, rules):
         self.tsv = [] # initial array of per rule tsv entries
-        self.final_csv = [] # final result of parsing all the inforamtion we want to be written to a file
-        self.rules = rules # rules array passed in from WazuhRules class
+        self.final_csv = [] # final result of parsing all the information we want to be written to a file
+        self.rules = rules # rules array passed in from Wazuh Rules class
 
     def init_print_vars(self):
         """

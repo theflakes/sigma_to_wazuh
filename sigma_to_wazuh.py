@@ -182,7 +182,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         logic.set('name', name)
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
-        value = str(value)
+        value = str(value).replace("\\\\", "\\\\+")
         if name == 'full_log':  # should we use .* or .+ to replace *
             logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+')
         else:
