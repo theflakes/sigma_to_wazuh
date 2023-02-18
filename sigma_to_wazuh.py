@@ -24,7 +24,7 @@ import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
 
-debug = "yes"
+debug = "no"
 
 class Notify(object):
     def __init__(self):
