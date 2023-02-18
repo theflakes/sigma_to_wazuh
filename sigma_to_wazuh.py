@@ -15,6 +15,7 @@
         - Any using a timeframe condition
     Stats on all the above will be reported by this script.
 """
+import collections
 import os
 import configparser
 import bs4, re
@@ -318,6 +319,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def write_wazah_id_to_sigman_id(self):
         with open(self.track_rule_ids_file, 'w') as ids:
             ids.write(json.dumps(self.track_rule_ids))
+                
 
     def write_rules_file(self):
         xml = bs4.BeautifulSoup(tostring(self.root), 'xml').prettify()
@@ -351,7 +353,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         xml = re.sub(r'</rule></group>', r'</rule>\n</group>', xml)
         xml = xml.replace('<?xml version="1.0" encoding="utf-8"?>\n', '')
 
-        with open(self.out_file, "w") as file:
+        with open(self.out_file, "w", encoding="utf-8") as file:
             file.write(xml)
 
         self.write_wazah_id_to_sigman_id()
@@ -605,10 +607,15 @@ class ParseSigmaRules(object):
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
         product = self.get_product(sigma_rule)
+        logic_paths = list(filter(None, logic_paths))
         for path in logic_paths:
+            Notify.debug(self, "Logic Path: {}".format(path))
             negate = "no"
             all_of = False
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
+            if isinstance(path[0], collections.abc.Sequence) and not isinstance(path[0], str):
+                path = path[0]
+            path = list(filter(None, path))
             for p in path:
                 Notify.debug(self, "Token: {}".format(p))
                 if p == "not":
@@ -688,7 +695,7 @@ class ParseSigmaRules(object):
                 is_and = True
                 continue
             if all_of:
-                path.append(self.handle_all_of(sigma_rule['detection'], t))
+                path = self.handle_all_of(sigma_rule['detection'], t)
                 all_of = False
                 continue
             if one_of:
