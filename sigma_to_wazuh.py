@@ -539,12 +539,11 @@ class ParseSigmaRules(object):
             for d in detection:
                 if isinstance(d, dict):
                     for k, v in d.items():
-                        record[k] = v
                         values = self.handle_detection_nested_lists(values, d, k, v)
                 else:
                     record[token] = detection
                     values.append(record)
-                record = {}
+                    break
             return values
         for k, v in detection.items():
             record[k] = v
@@ -591,7 +590,7 @@ class ParseSigmaRules(object):
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detection, product, all_of):
         detections = self.get_detection(detection, token)
-
+        Notify.debug(self, "Detections: {}".format(detections))
         for d in detections:
             Notify.debug(self, "Detection: {}".format(d))
             for k, v in d.items():
@@ -600,6 +599,7 @@ class ParseSigmaRules(object):
                     field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 else:
                     field, logic, is_b64 = self.convert_transforms(k, v, negate)
+                Notify.debug(self, "Logic: {}".format(logic))
                 if k == 'keywords':
                     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
                     continue
