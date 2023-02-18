@@ -38,7 +38,7 @@ class Notify(object):
         
     def debug(self, message):
         if debug == "yes":
-            print("[*] %s" % message)
+            print("[*] %s" % repr(message)[1:-1])
 
 
 class BuildRules(object):
@@ -516,6 +516,7 @@ class ParseSigmaRules(object):
         """
             We can run into lists at various depths in Sigma deteciton logic.
         """
+        values = []
         if not key.endswith('|all'):
             if isinstance(record[key], list):
                 values = self.list_add_unique(record, values, key)
@@ -530,7 +531,7 @@ class ParseSigmaRules(object):
 
     def get_detection(self, detection, token):
         """
-            Break appart detection logic into dictionaries for use in creating the Wazuh logic.
+            Break apart detection logic into dictionaries for use in creating the Wazuh logic.
             e.g. {"fieldname|<startswith|endswith|etc.>": ["something to look for", "another thing to look for"]}
         """
         record = {}
@@ -547,7 +548,9 @@ class ParseSigmaRules(object):
             return values
         for k, v in detection.items():
             record[k] = v
-            values.append(record)
+            Notify.debug(self, "Detection Record: {}".format(record))
+        values.append(record)
+        Notify.debug(self, "Discovered Detections: {}".format(values))
         return values
 
     def get_product(self, sigma_rule):
@@ -624,7 +627,7 @@ class ParseSigmaRules(object):
                 elif p == "all_of":
                     all_of = True
                     continue
-                elif p == "1_of_them" or (len(logic_paths) == 1 and len(path) == 1):
+                elif p == "1_of_them":
                     self.handle_one_of_them(rules, rule, sigma_rule['detection'],
                                             sigma_rule, sigma_rule_link, product, negate)
                     continue
