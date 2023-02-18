@@ -24,7 +24,7 @@ import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
 
-debug = "no"
+debug = "yes"
 
 class Notify(object):
     def __init__(self):
@@ -644,13 +644,17 @@ class ParseSigmaRules(object):
         return path
 
     def handle_one_of(self, detections, token, path, negate):
+        paths = []
         for d in detections:
+            path_start = path.copy()
             if d.startswith(token.replace('*', '')):
                 if negate:
-                    path.append("not")
-                path.append(d)
-        Notify.debug(self, "One of: {}".format(path))
-        return path
+                    path_start.append("not")
+                path_start.append(d)
+                Notify.debug(self, "One of: {}".format(path_start))
+                paths.append(path_start)
+        Notify.debug(self, "One of results: {}".format(paths))
+        return paths
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
         logic_paths = []        # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
