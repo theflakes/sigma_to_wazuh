@@ -612,15 +612,16 @@ class ParseSigmaRules(object):
         product = self.get_product(sigma_rule)
         logic_paths = list(filter(None, logic_paths))
         for path in logic_paths:
-            Notify.debug(self, "Logic Path: {}".format(path))
             negate = "no"
             all_of = False
             rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-            if isinstance(path[0], collections.abc.Sequence) and not isinstance(path[0], str):
-                path = path[0]
+            Notify.debug(self, "Logic Path: {}".format(path))
             path = list(filter(None, path))
             for p in path:
-                Notify.debug(self, "Token: {}".format(p))
+                if isinstance(p, collections.abc.Sequence) and not isinstance(p, str): # kludge to fix token that is an array
+                    p = p[0]
+                Notify.debug(self, "Token - {} : {}".format(type(p), p))
+                Notify.debug(self, "Detection Type: {}".format(type(sigma_rule['detection'])))
                 if p == "not":
                     negate = "yes"
                     continue
