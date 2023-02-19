@@ -394,15 +394,15 @@ class ParseSigmaRules(object):
             Allows for easier tokenization.
         """
         if isinstance(condition, list):
-            return [tok.replace('1 of them', '1_of_them')
-                        .replace('all of them', 'all_of_them')
+            return [tok.replace('1 of them', '1_of')
+                        .replace('all of them', 'all_of')
                         .replace('1 of', '1_of')
                         .replace('all of', 'all_of') \
                         .replace('(', ' ( ') \
                         .replace(')', ' ) ')
                     for tok in condition]
-        return condition.replace('1 of them', '1_of_them') \
-            .replace('all of them', 'all_of_them') \
+        return condition.replace('1 of them', '1_of') \
+            .replace('all of them', 'all_of') \
             .replace('1 of', '1_of') \
             .replace('all of', 'all_of') \
             .replace('(', ' ( ') \
@@ -454,34 +454,25 @@ class ParseSigmaRules(object):
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         return self.fixup_logic(value, is_regex)
 
-    def handle_one_of_them(self, rules, rule, detection, sigma_rule,
-                           sigma_rule_link, product, negate):
-        if isinstance(detection, dict):
-            for k, v in detection.items():
-                if k == "condition":
-                    continue
-                if isinstance(v, dict):
-                    rule = self.handle_dict(v, rules, rule, product, sigma_rule, sigma_rule_link, negate)
-                    continue
-                if isinstance(v, list):
-                    for d in v:
-                        if isinstance(d, dict):
-                            rule = self.handle_dict(d, rules, rule, product, sigma_rule, sigma_rule_link, negate)
-                    continue
-                field, logic, is_b64 = self.convert_transforms(k, v, negate)
-                rules.add_logic(rule, product, field, negate, logic, is_b64)
-            self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
+    # def handle_one_of_them(self, rules, rule, detection, sigma_rule,
+    #                        sigma_rule_link, product, negate):
+    #     if isinstance(detection, dict):
+    #         for k, v in detection.items():
+    #             if k == "condition":
+    #                 continue
+    #             if isinstance(v, dict):
+    #                 rule = self.handle_dict(v, rules, rule, product, sigma_rule, sigma_rule_link, negate)
+    #                 continue
+    #             if isinstance(v, list):
+    #                 for d in v:
+    #                     if isinstance(d, dict):
+    #                         rule = self.handle_dict(d, rules, rule, product, sigma_rule, sigma_rule_link, negate)
+    #                 continue
+    #             field, logic, is_b64 = self.convert_transforms(k, v, negate)
+    #             rules.add_logic(rule, product, field, negate, logic, is_b64)
+    #         self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
 
     def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
-        """
-            A condition set as keywords will have a list of fields to look for those keywords in.
-        """
-        if 'fields' in sigma_rule:
-            for f in sigma_rule['fields']:
-                self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, f, negate, is_b64)
-                rule = rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
-            self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
-            return
         rules.add_logic(rule, product, "full_log", negate, logic, is_b64)
 
     def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link, negate):
@@ -628,10 +619,10 @@ class ParseSigmaRules(object):
                 elif p == "all_of":
                     all_of = True
                     continue
-                elif p == "1_of_them":
-                    self.handle_one_of_them(rules, rule, sigma_rule['detection'],
-                                            sigma_rule, sigma_rule_link, product, negate)
-                    continue
+                #elif p == "1_of":
+                #    self.handle_one_of_them(rules, rule, sigma_rule['detection'],
+                #                            sigma_rule, sigma_rule_link, product, negate)
+                #    continue
                 self.handle_fields(rules, rule, p, negate,
                                     sigma_rule, sigma_rule_link,
                                     sigma_rule['detection'][p],
@@ -708,7 +699,7 @@ class ParseSigmaRules(object):
                 continue
             if one_of:
                 # one_of logic parsing is an utter kludge (e.g. what if 1_of comes at the beginning of condition followed by more logic?)
-                logic_paths.append(self.handle_one_of(sigma_rule['detection'], t, path, negate['n']))
+                logic_paths.extend(self.handle_one_of(sigma_rule['detection'], t, path, negate['n']))
                 one_of = False
                 one_of_paths = True
                 continue
@@ -730,7 +721,8 @@ class ParseSigmaRules(object):
                 all_of = True
                 continue
             path.append(t)
-        logic_paths.append(path)
+        if path:
+            logic_paths.append(path)
         Notify.debug(self, "Logic Paths: {}".format(logic_paths))
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
