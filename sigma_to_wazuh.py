@@ -584,7 +584,7 @@ class ParseSigmaRules(object):
         return key, self.handle_or_to_and(value, negate, False, '', '', False), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
-                      sigma_rule_link, detections, product, all_of):
+                      sigma_rule_link, detections, product):
         detection = self.get_detection(detections, token)
         Notify.debug(self, "Detections: {}".format(detections))
         Notify.debug(self, "Detection: {}".format(detection))
@@ -629,7 +629,7 @@ class ParseSigmaRules(object):
                 self.handle_fields(rules, rule, p, negate,
                                     sigma_rule, sigma_rule_link,
                                     sigma_rule['detection'][p],
-                                    product, all_of)
+                                    product)
                 negate = "no"
 
     def handle_all_of(self, detections, token):
