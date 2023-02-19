@@ -671,7 +671,7 @@ class ParseSigmaRules(object):
         is_and = False          # did we bump into an and
         all_of = False          # handle "all of" directive
         one_of = False          # handle "1 of" directive
-        ignore = False
+        ignore = False          # if exiting the token loop and "all_of" or "one_of" was the last processed don't add it to logic_paths
         tokens = list(filter(None, tokens))  # remove all Null entries
         Notify.debug(self, "*" * 80)
         Notify.debug(self, "Rule ID: " + sigma_rule['id'])
