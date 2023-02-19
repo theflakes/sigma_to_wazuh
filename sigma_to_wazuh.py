@@ -591,11 +591,11 @@ class ParseSigmaRules(object):
         for d in detection:
             Notify.debug(self, "Detection: {}".format(d))
             for k, v in d.items():
-                if all_of:
-                    k = k + "|contains|all"
-                    field, logic, is_b64 = self.convert_transforms(k, v, negate)
-                else:
-                    field, logic, is_b64 = self.convert_transforms(k, v, negate)
+                # if all_of:
+                #     k = k + "|contains|all"
+                #     field, logic, is_b64 = self.convert_transforms(k, v, negate)
+                # else:
+                field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 Notify.debug(self, "Logic: {}".format(logic))
                 if k == 'keywords':
                     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
@@ -619,9 +619,9 @@ class ParseSigmaRules(object):
                 if p == "not":
                     negate = "yes"
                     continue
-                elif p == "all_of":
-                    all_of = True
-                    continue
+                # elif p == "all_of":
+                #     all_of = True
+                #     continue
                 #elif p == "1_of":
                 #    self.handle_one_of_them(rules, rule, sigma_rule['detection'],
                 #                            sigma_rule, sigma_rule_link, product, negate)
