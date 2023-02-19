@@ -647,7 +647,6 @@ class ParseSigmaRules(object):
         for d in detections:
             if d.startswith(token.replace('*', '')):
                 if negate:
-
                     path_start.extend(["not"])
                 path_start.extend([d])
                 Notify.debug(self, "One of path: {}".format(path_start))
