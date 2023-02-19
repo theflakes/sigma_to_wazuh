@@ -631,10 +631,13 @@ class ParseSigmaRules(object):
 
     def handle_all_of(self, detections, token):
         path = []
+        Notify.debug(self, "All of token: {}".format(token))
         if token.endswith('*'):
             for d in detections:
                 if d.startswith(token.replace('*', '')):
                     path.append(d)
+        else:
+            path.extend([token])
         Notify.debug(self, "All of: {}".format(path))
         return path
 
