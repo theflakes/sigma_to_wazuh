@@ -635,7 +635,7 @@ class ParseSigmaRules(object):
         if token.endswith('*'):
             for d in detections:
                 if d.startswith(token.replace('*', '')):
-                    path.append(d)
+                    path.extend([d])
         else:
             path.extend([token])
         Notify.debug(self, "All of: {}".format(path))
@@ -643,14 +643,20 @@ class ParseSigmaRules(object):
 
     def handle_one_of(self, detections, token, path, negate):
         paths = []
+        path_start = path.copy()
         for d in detections:
-            path_start = path.copy()
             if d.startswith(token.replace('*', '')):
                 if negate:
-                    path_start.append("not")
-                path_start.append(d)
-                Notify.debug(self, "One of: {}".format(path_start))
-                paths.append(path_start)
+
+                    path_start.extend(["not"])
+                path_start.extend([d])
+                Notify.debug(self, "One of path: {}".format(path_start))
+                if not negate:
+                    paths.append(path_start)
+                    path_start = path.copy()
+                Notify.debug(self, "One of paths: {}".format(paths))
+        if negate:
+            paths.extend([path_start])
         Notify.debug(self, "One of results: {}".format(paths))
         return paths
 
@@ -663,14 +669,13 @@ class ParseSigmaRules(object):
         is_and = False          # did we bump into an and
         all_of = False          # handle "all of" directive
         one_of = False          # handle "1 of" directive
-        one_of_paths = False
+        ignore = False
         tokens = list(filter(None, tokens))  # remove all Null entries
         Notify.debug(self, "*" * 80)
         Notify.debug(self, "Rule ID: " + sigma_rule['id'])
         Notify.debug(self, "Rule Link: " + sigma_rule_link)
         Notify.debug(self, "Tokens: {}".format(tokens))
         for t in tokens:
-            Notify.debug(self, "Logic Path: {}".format(path))
             if t.lower() == 'not':
                 if negate['n']:
                     negate['n'] = False
@@ -698,13 +703,15 @@ class ParseSigmaRules(object):
                 continue
             if all_of:
                 path.extend(self.handle_all_of(sigma_rule['detection'], t))
+                ignore = True
                 all_of = False
                 continue
             if one_of:
                 # one_of logic parsing is an utter kludge (e.g. what if 1_of comes at the beginning of condition followed by more logic?)
-                logic_paths.extend(self.handle_one_of(sigma_rule['detection'], t, path, negate['n']))
+                paths = self.handle_one_of(sigma_rule['detection'], t, path, negate['n'])
+                ignore = True
+                logic_paths.extend(paths)
                 one_of = False
-                one_of_paths = True
                 continue
             if is_or and not negate['n']:
                 logic_paths.append(path)
@@ -724,7 +731,10 @@ class ParseSigmaRules(object):
                 all_of = True
                 continue
             path.append(t)
-        if path:
+            ignore = False
+            Notify.debug(self, "Logic Path: {}".format(path))
+        if path and not ignore:
+            Notify.debug(self, "Logic Path: {}".format(path))
             logic_paths.append(path)
         Notify.debug(self, "Logic Paths: {}".format(logic_paths))
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
