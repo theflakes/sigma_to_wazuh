@@ -69,6 +69,7 @@ class BuildRules(object):
         r = re.compile(r'^(\s*)', re.MULTILINE)
 
         def prettify(self, encoding=None, formatter="minimal", indent_width=4):
+            Notify.debug(self, "Function: {}".format(self.prettify.__name__))
             return r.sub(r'\1' * indent_width, orig_prettify(self, encoding, formatter))
 
         bs4.BeautifulSoup.prettify = prettify
@@ -78,6 +79,7 @@ class BuildRules(object):
             Need to track Wazuh rule ID between runs so that any rules dependent
             on these auto generated rules will not be broken by subsequent runs.
         """
+        Notify.debug(self, "Function: {}".format(self.load_wazuh_to_sigma_id_mappings.__name__))
         try:
             with open(self.track_rule_ids_file, 'r') as ids:
                 return json.load(ids)
@@ -86,6 +88,7 @@ class BuildRules(object):
             return {}
 
     def get_used_wazuh_rule_ids(self):
+        Notify.debug(self, "Function: {}".format(self.get_used_wazuh_rule_ids.__name__))
         # ids = [str(self.rule_id_start)] # never use the first number
         ids = []
         for k, v in self.track_rule_ids.items():
@@ -95,6 +98,7 @@ class BuildRules(object):
         return ids
 
     def create_root(self):
+        Notify.debug(self, "Function: {}".format(self.create_root.__name__))
         root = Element('group')
         root.set('name', 'sigma,')
         self.add_header_comment(root)
@@ -110,6 +114,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         root.append(comment)
 
     def update_rule_id_mappings(self, sigma_guid, wid):
+        Notify.debug(self, "Function: {}".format(self.update_rule_id_mappings.__name__))
         if sigma_guid in self.track_rule_ids:
             if wid not in self.track_rule_ids[sigma_guid]:
                 self.track_rule_ids[sigma_guid].append(wid)
@@ -120,6 +125,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
             Lets make sure we use a Wazuh rule ID not already assigned to a Sigma GUID
         """
+        Notify.debug(self, "Function: {}".format(self.find_unused_rule_id.__name__))
         while True:
             self.rule_id += 1
             wid = str(self.rule_id)
@@ -133,6 +139,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             Has this Sigma rule already been converted and assigned a Wazuh rule ID?
             If so, we need to keep it the same.
         """
+        Notify.debug(self, "Function: {}".format(self.find_wazuh_id.__name__))
         if sigma_guid in self.track_rule_ids:
             for wid in self.track_rule_ids[sigma_guid]:
                 if wid not in self.used_wazuh_ids_this_run:
@@ -141,6 +148,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return wid
 
     def init_rule(self, level, sigma_guid):
+        Notify.debug(self, "Function: {}".format(self.init_rule.__name__))
         rule = SubElement(self.root, 'rule')
         wid = self.find_wazuh_id(sigma_guid)
         self.used_wazuh_ids_this_run.append(wid)
@@ -150,6 +158,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return rule
 
     def convert_field_name(self, product, field):
+        Notify.debug(self, "Function: {}".format(self.convert_field_name.__name__))
         if product in self.config.sections():
             if field in self.config[product]:
                 return self.config[product][field]
@@ -159,6 +168,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
             spaces at end of logic are being chopped, therefore hacking this fix
         """
+        Notify.debug(self, "Function: {}".format(self.if_ends_in_space.__name__))
         if value.startswith('(?i)'):  # if value start with this, it is a Sigma regex, remove it as it will be added again
             value = value[4:]
         if value.endswith(' '):
@@ -171,6 +181,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         """
             We do not want to honor Sigma startwith and endswith logic if we use the full_log field
         """
+        Notify.debug(self, "Function: {}".format(self.handle_full_log_field.__name__))
         if value.startswith('^'):
             value = value[1:]
         if value.endswith('$') and not value[-2:] == '\$':
@@ -178,6 +189,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return value
 
     def add_logic(self, rule, product, field, negate, value, is_b64):
+        Notify.debug(self, "Function: {}".format(self.add_logic.__name__))
         logic = SubElement(rule, 'field')
         name = self.convert_field_name(product, field)
         logic.set('name', name)
@@ -190,16 +202,17 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*', r'.+')  # assumption is all '*' are wildcards
 
     def get_level(self, level):
+        Notify.debug(self, "Function: {}".format(self.get_level.__name__))
         if level == "critical":
             return self.critical
         if level == "high":
             return self.high
         if level == "medium":
             return self.medium
-
         return self.low
 
     def add_options(self, rule, level, sigma_guid):
+        Notify.debug(self, "Function: {}".format(self.add_options.__name__))
         if self.no_full_log == 'yes':
             options = SubElement(rule, 'options')
             options.text = "no_full_log"
@@ -212,25 +225,30 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             if_sid.text = "alert_by_email"
 
     def add_mitre(self, rule, tags):
+        Notify.debug(self, "Function: {}".format(self.add_mitre.__name__))
         mitre = SubElement(rule, 'mitre')
         for t in tags:
             mitre_id = SubElement(mitre, 'id')
             mitre_id.text = t
 
     def add_sigma_author(self, rule, sigma_rule_auther):
+        Notify.debug(self, "Function: {}".format(self.add_sigma_author.__name__))
         comment = Comment('Sigma Rule Author: ' + sigma_rule_auther)
         rule.append(comment)
 
     def add_sigma_link_info(self, rule, sigma_rule_link):
+        Notify.debug(self, "Function: {}".format(self.add_sigma_link_info.__name__))
         link = SubElement(rule, 'info')
         link.set('type', 'link')
         link.text = (self.rules_link + sigma_rule_link)
 
     def add_rule_comment(self, rule, misc):
+        Notify.debug(self, "Function: {}".format(self.add_rule_comment.__name__))
         comment = Comment(misc.replace('--', ' - '))  # '--' not allowed in XML comment
         rule.append(comment)
 
     def add_sigma_rule_references(self, rule, reference):
+        Notify.debug(self, "Function: {}".format(self.add_sigma_rule_references.__name__))
         refs = 'References: \n'
         for r in reference:
             refs += '\t' + r + '\n'
@@ -238,10 +256,12 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         rule.append(comment)
 
     def add_description(self, rule, title):
+        Notify.debug(self, "Function: {}".format(self.add_description.__name__))
         description = SubElement(rule, 'description')
         description.text = title
 
     def add_sources(self, rule, sources):
+        Notify.debug(self, "Function: {}".format(self.add_sources.__name__))
         log_sources = ""
         for key, value in sources.items():
             if value and not key == 'definition':
@@ -250,6 +270,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         groups.text = log_sources
 
     def add_if_group_guid(self, rule, sigma_guid):
+        Notify.debug(self, "Function: {}".format(self.add_if_group_guid.__name__))
         if sigma_guid in self.config['if_group_guid']:
             if_sid = SubElement(rule, 'if_group')
             if_sid.text = self.config['if_group_guid'][sigma_guid]
@@ -257,6 +278,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return False
 
     def add_if_sid_guid(self, rule, sigma_guid):
+        Notify.debug(self, "Function: {}".format(self.add_if_group.__name__))
         if sigma_guid in self.config['if_sid_guid']:
             if_sid = SubElement(rule, 'if_sid')
             if_sid.text = self.config['if_sid_guid'][sigma_guid]
@@ -264,6 +286,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return False
 
     def add_if_group(self, rule, log_source):
+        Notify.debug(self, "Function: {}".format(self.add_if_group.__name__))
         target = ""
         if ('service' in log_source) and (log_source['service'] in self.config['if_group']):
             target = log_source['service']
@@ -276,6 +299,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return False
         
     def add_if_sid(self, rule, log_source):
+        Notify.debug(self, "Function: {}".format(self.add_if_sid.__name__))
         target = ""
         if ('service' in log_source) and (log_source['service'] in self.config['if_sid']):
             target = log_source['service']
@@ -286,6 +310,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             if_sid.text = self.config['if_sid'][target]
 
     def create_rule(self, sigma_rule, sigma_rule_link, sigma_guid):
+        Notify.debug(self, "Function: {}".format(self.create_rule.__name__))
         level = sigma_rule['level']
         rule = self.init_rule(level, sigma_guid)
         self.add_sigma_link_info(rule, sigma_rule_link)
@@ -317,11 +342,13 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return rule
 
     def write_wazah_id_to_sigman_id(self):
+        Notify.debug(self, "Function: {}".format(self.write_wazah_id_to_sigman_id.__name__))
         with open(self.track_rule_ids_file, 'w') as ids:
             ids.write(json.dumps(self.track_rule_ids))
                 
 
     def write_rules_file(self):
+        Notify.debug(self, "Function: {}".format(self.write_rules_file.__name__))
         xml = bs4.BeautifulSoup(tostring(self.root), 'xml').prettify()
 
         # collapse some tags to single lines
@@ -369,6 +396,7 @@ class ParseSigmaRules(object):
         self.converted_total = 0
 
     def get_sigma_rules(self):
+        Notify.debug(self, "Function: {}".format(self.get_sigma_rules.__name__))
         fname = []
         exclude = set(['deprecated'])
         for root, dirs, f_names in os.walk(self.sigma_rules_dir):
@@ -378,6 +406,7 @@ class ParseSigmaRules(object):
         return fname
 
     def load_sigma_rule(self, rule_file):
+        Notify.debug(self, "Function: {}".format(self.load_sigma_rule.__name__))
         try:
             yaml = YAML(typ='safe')
             with open(rule_file) as file:
@@ -393,6 +422,7 @@ class ParseSigmaRules(object):
             Replace spaces with _ when the words constitute a logic operation.
             Allows for easier tokenization.
         """
+        Notify.debug(self, "Function: {}".format(self.fixup_condition.__name__))
         if isinstance(condition, list):
             return [tok.replace('1 of them', '1_of')
                         .replace('all of them', 'all_of')
@@ -409,6 +439,7 @@ class ParseSigmaRules(object):
             .replace(')', ' ) ')
 
     def remove_wazuh_rule(self, rules, rule, sid):
+        Notify.debug(self, "Function: {}".format(self.remove_wazuh_rule.__name__))
         wid = rule.get('id')
         if wid == str(rules.rule_id - 1):
             rules.rule_id -= 1
@@ -420,6 +451,7 @@ class ParseSigmaRules(object):
         rules.root.remove(rule)  # destroy the extra rule that is created
 
     def fixup_logic(self, logic, is_regex):
+        Notify.debug(self, "Function: {}".format(self.fixup_logic.__name__))
         logic = str(logic)
         if len(logic) > 2:  # when converting to Wazuh pcre2 expressions, we don't need start and end wildcards
             if logic[0] == '*': logic = logic[1:]
@@ -430,18 +462,21 @@ class ParseSigmaRules(object):
             return re.escape(logic)
 
     def handle_b64offsets_list(self, value):
+        Notify.debug(self, "Function: {}".format(self.handle_b64offsets_list.__name__))
         offset1 = ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
         offset2 = ('|'.join([str(base64.b64encode((' ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=','')[2:]
         offset3 = ('|'.join([str(base64.b64encode(('  ' + i).encode('utf-8')), 'utf-8') for i in value])).replace('=','')[3:]
         return offset1 + "|" + offset2 + "|" + offset3
 
     def handle_b64offsets(self, value):
+        Notify.debug(self, "Function: {}".format(self.handle_b64offsets.__name__))
         offset1 = (str(base64.b64encode(value.encode('utf-8')), 'utf-8')).replace('=', '')
         offset2 = (str(base64.b64encode((' ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[2:]
         offset3 = (str(base64.b64encode(('  ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[3:]
         return offset1 + "|" + offset2 + "|" + offset3
 
     def handle_list(self, value, is_b64, b64_offset, is_regex):
+        Notify.debug(self, "Function: {}".format(self.handle_list.__name__))
         if isinstance(value, list):
             if is_b64:
                 if b64_offset:
@@ -473,15 +508,18 @@ class ParseSigmaRules(object):
     #         self.remove_wazuh_rule(rules, rule, sigma_rule['id'])
 
     def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
+        Notify.debug(self, "Function: {}".format(self.handle_keywords.__name__))
         rules.add_logic(rule, product, "full_log", negate, logic, is_b64)
 
     def handle_dict(self, d, rules, rule, product, sigma_rule, sigma_rule_link, negate):
+        Notify.debug(self, "Function: {}".format(self.handle_dict.__name__))
         for k, v in d.items():
             field, logic, is_b64 = self.convert_transforms(k, v, negate)
             self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
         return rules.create_rule(sigma_rule, sigma_rule_link, sigma_rule['id'])
 
     def is_dict_list_or_not(self, logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64):
+        Notify.debug(self, "Function: {}".format(self.is_dict_list_or_not.__name__))
         if isinstance(logic, list):
             for l in logic:
                 rules.add_logic(rule, product, field, negate, l, is_b64)
@@ -489,6 +527,7 @@ class ParseSigmaRules(object):
         rules.add_logic(rule, product, field, negate, logic, is_b64)
 
     def list_add_unique(self, record, values, key):
+        Notify.debug(self, "Function: {}".format(self.list_add_unique.__name__))
         for d in values:
             for k, v in d.items():
                 if k == key:
@@ -507,6 +546,7 @@ class ParseSigmaRules(object):
         """
             We can run into lists at various depths in Sigma deteciton logic.
         """
+        Notify.debug(self, "Function: {}".format(self.handle_detection_nested_lists.__name__))
         values = []
         if not key.endswith('|all'):
             if isinstance(record[key], list):
@@ -526,6 +566,7 @@ class ParseSigmaRules(object):
             Break apart detection logic into dictionaries for use in creating the Wazuh logic.
             e.g. {"fieldname|<startswith|endswith|etc.>": ["something to look for", "another thing to look for"]}
         """
+        Notify.debug(self, "Function: {}".format(self.get_detection.__name__))
         record = {}
         values = []
         Notify.debug(self, "Detection: {}".format(detection))
@@ -547,11 +588,13 @@ class ParseSigmaRules(object):
         return values
 
     def get_product(self, sigma_rule):
+        Notify.debug(self, "Function: {}".format(self.get_product.__name__))
         if 'logsource' in sigma_rule and 'product' in sigma_rule['logsource']:
             return sigma_rule['logsource']['product'].lower()
         return ""
 
     def handle_or_to_and(self, value, negate, contains_all, start, end, is_regex):
+        Notify.debug(self, "Function: {}".format(self.handle_or_to_and.__name__))
         """
             We have to split up contains_all and any negated fields into individual field statements in Wazuh rules
         """
@@ -565,6 +608,7 @@ class ParseSigmaRules(object):
             return start + self.handle_list(value, False, False, is_regex) + end
 
     def convert_transforms(self, key, value, negate):
+        Notify.debug(self, "Function: {}".format(self.convert_transforms.__name__))
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
@@ -585,6 +629,7 @@ class ParseSigmaRules(object):
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detections, product):
+        Notify.debug(self, "Function: {}".format(self.handle_fields.__name__))
         detection = self.get_detection(detections, token)
         Notify.debug(self, "Detections: {}".format(detections))
         Notify.debug(self, "Detection: {}".format(detection))
@@ -603,6 +648,7 @@ class ParseSigmaRules(object):
                 self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
+        Notify.debug(self, "Function: {}".format(self.handle_logic_paths.__name__))
         product = self.get_product(sigma_rule)
         logic_paths = list(filter(None, logic_paths))
         for path in logic_paths:
@@ -633,6 +679,7 @@ class ParseSigmaRules(object):
                 negate = "no"
 
     def handle_all_of(self, detections, token):
+        Notify.debug(self, "Function: {}".format(self.handle_all_of.__name__))
         path = []
         Notify.debug(self, "All of token: {}".format(token))
         if token.endswith('*'):
@@ -645,6 +692,7 @@ class ParseSigmaRules(object):
         return path
 
     def handle_one_of(self, detections, token, path, negate):
+        Notify.debug(self, "Function: {}".format(self.handle_one_of.__name__))
         paths = []
         path_start = path.copy()
         for d in detections:
@@ -663,6 +711,7 @@ class ParseSigmaRules(object):
         return paths
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
+        Notify.debug(self, "Function: {}".format(self.build_logic_paths.__name__))
         logic_paths = []        # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
         path = []               # minimum logic for one AND path
         negate = {'n': False, 'd': 0}
@@ -763,6 +812,7 @@ class TrackSkip(object):
         self.rules_skipped = 0
 
     def rule_not_loaded(self, rule, sigma_rule):
+        Notify.debug(self, "Function: {}".format(self.rule_not_loaded.__name__))
         if not sigma_rule:
             self.rules_skipped += 1
             Notify.error(self, "ERROR loading Sigma rule: " + rule)
@@ -770,6 +820,7 @@ class TrackSkip(object):
         return False
 
     def skip_experimental_rules(self, sigma_rule):
+        Notify.debug(self, "Function: {}".format(self.skip_experimental_rules.__name__))
         if self.process_experimental_rules == "no":
             if 'status' in sigma_rule:
                 if sigma_rule['status'] == "experimental":
@@ -779,10 +830,12 @@ class TrackSkip(object):
         return False
 
     def inc_skip_counters(self):
+        Notify.debug(self, "Function: {}".format(self.inc_skip_counters.__name__))
         self.rules_skipped += 1
         self.hard_skipped += 1
 
     def skip_rule(self, sigma_rule):
+        Notify.debug(self, "Function: {}".format(self.skip_rule.__name__))
         skip = False
         if sigma_rule["id"] in self.sigma_skip_ids:  # skip specific Sigma rule GUIDs
             skip = True
@@ -817,6 +870,7 @@ class TrackSkip(object):
         return skip
 
     def skip_logic(self, condition, detection):
+        Notify.debug(self, "Function: {}".format(self.skip_logic.__name__))
         skip = False
         logic = []
         message = "SKIPPED Sigma rule:"
@@ -840,6 +894,7 @@ class TrackSkip(object):
             All logic conditions are not parsed yet.
             This procedure will skip Sigma rules we are not ready to parse.
         """
+        Notify.debug(self, "Function: {}".format(self.check_for_skip.__name__))
         if self.skip_experimental_rules(sigma_rule):
             Notify.info(self, "SKIPPED Sigma rule: " + rule)
             return True
@@ -855,6 +910,7 @@ class TrackSkip(object):
         return skip
 
     def report_stats(self, error_count, wazuh_rules_count, sigma_rules_count):
+        Notify.debug(self, "Function: {}".format(self.report_stats.__name__))
         sigma_rules_converted = sigma_rules_count - self.rules_skipped
         sigma_rules_converted_percent = round(((sigma_rules_converted / sigma_rules_count) * 100), 2)
         print("\n\n" + "*" * 75)
@@ -876,10 +932,11 @@ class TrackSkip(object):
 
 
 def main():
+    notify = Notify()
+    notify.debug("Function: {}".format(main.__name__))
     convert = ParseSigmaRules()
     wazuh_rules = BuildRules()
     stats = TrackSkip()
-    notify = Notify()
 
     for rule in convert.sigma_rules:
         sigma_rule = convert.load_sigma_rule(rule)
