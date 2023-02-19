@@ -697,7 +697,7 @@ class ParseSigmaRules(object):
                 is_and = True
                 continue
             if all_of:
-                path = self.handle_all_of(sigma_rule['detection'], t)
+                path.extend(self.handle_all_of(sigma_rule['detection'], t))
                 all_of = False
                 continue
             if one_of:
