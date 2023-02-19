@@ -518,6 +518,7 @@ class ParseSigmaRules(object):
                     values = self.list_add_unique(record, values, key)
         else:
             values.append(record)
+        Notify.debug(self, "Detection values: {}".format(values))
         return values
 
     def get_detection(self, detection, token):
@@ -527,11 +528,12 @@ class ParseSigmaRules(object):
         """
         record = {}
         values = []
+        Notify.debug(self, "Detection: {}".format(detection))
         if isinstance(detection, list):
             for d in detection:
                 if isinstance(d, dict):
                     for k, v in d.items():
-                        values = self.handle_detection_nested_lists(values, d, k, v)
+                        values.extend(self.handle_detection_nested_lists(values, d, k, v))
                 else:
                     record[token] = detection
                     values.append(record)
@@ -582,10 +584,11 @@ class ParseSigmaRules(object):
         return key, self.handle_or_to_and(value, negate, False, '', '', False), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
-                      sigma_rule_link, detection, product, all_of):
-        detections = self.get_detection(detection, token)
+                      sigma_rule_link, detections, product, all_of):
+        detection = self.get_detection(detections, token)
         Notify.debug(self, "Detections: {}".format(detections))
-        for d in detections:
+        Notify.debug(self, "Detection: {}".format(detection))
+        for d in detection:
             Notify.debug(self, "Detection: {}".format(d))
             for k, v in d.items():
                 if all_of:
@@ -821,11 +824,11 @@ class TrackSkip(object):
             skip = True
             self.near_skips += 1
             logic.append('Near')
-        if (condition.count('(') > 1 and ' or ' in condition) or (
-                not ') or (' in condition and condition.count('(') == 2):
-            skip = True
-            self.paren_skips += 1
-            logic.append('Paren')
+        # if (condition.count('(') > 1 and ' or ' in condition) or (
+        #         not ') or (' in condition and condition.count('(') == 2):
+        #     skip = True
+        #     self.paren_skips += 1
+        #     logic.append('Paren')
         if 'timeframe' in detection:
             skip = True
             self.timeframe_skips += 1
