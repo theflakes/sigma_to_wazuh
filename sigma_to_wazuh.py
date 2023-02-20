@@ -200,7 +200,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         if name == 'full_log':  # should we use .* or .+ to replace *
             logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+')
         else:
-            logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*', r'.+')  # assumption is all '*' are wildcards
+            logic.text = self.if_ends_in_space(value, is_b64).replace(r'*', r'.+')  # assumption is all '*' are wildcards
 
     def get_level(self, level):
         Notify.debug(self, "Function: {}".format(self.get_level.__name__))
