@@ -15,6 +15,7 @@
         - Any using a timeframe condition
     Stats on all the above will be reported by this script.
 """
+import argparse
 import collections
 import os
 import configparser
@@ -24,7 +25,7 @@ import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from ruamel.yaml import YAML
 
-debug = "yes"
+debug = False
 
 class Notify(object):
     def __init__(self):
@@ -37,7 +38,7 @@ class Notify(object):
         print("[!] %s" % message)
         
     def debug(self, message):
-        if debug == "yes":
+        if debug:
             print("[*] %s" % repr(message)[1:-1])
 
 
@@ -932,7 +933,24 @@ class TrackSkip(object):
         print("*" * 75 + "\n\n")
 
 
+def arguments() -> argparse.ArgumentParser:
+    global debug
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s [OPTION]",
+        description="Convert Sigma rules into Wazuh rules."
+    )
+    parser.add_argument(
+        "-v", "--version", action="version",
+        version = f"{parser.prog} version 1.0.0"
+    )
+    parser.add_argument('--debug', "-d", action="store_true",
+                        help="increase output verbosity")
+    args = parser.parse_args()
+    if args.debug:
+        debug = args.debug
+
 def main():
+    arguments()
     notify = Notify()
     notify.debug("Function: {}".format(main.__name__))
     convert = ParseSigmaRules()
