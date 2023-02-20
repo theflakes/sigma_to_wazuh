@@ -198,9 +198,9 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         value = str(value).replace(r'\?', r'.').replace(r'\\', r'\\+') # This does replace escaped '*'s, FIX UP NEEDED
         value = re.sub(r'(?:\\\\\+)+', r'\\\\+', value) # cleanup multiple '\\+' back to back
         if name == 'full_log':
-            logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+')
+            logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+') # assumption is all '*' are wildcards
         else:
-            logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*', r'.+')  # assumption is all '*' are wildcards
+            logic.text = self.if_ends_in_space(value, is_b64).replace(r'\*', r'.+') # assumption is all '*' are wildcards
 
     def get_level(self, level):
         Notify.debug(self, "Function: {}".format(self.get_level.__name__))
