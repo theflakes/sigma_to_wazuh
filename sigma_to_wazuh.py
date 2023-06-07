@@ -932,8 +932,12 @@ def main():
         if stats.rule_not_loaded(rule, sigma_rule):
             continue
 
-        conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
-        #notify.debug(conditions)
+        try:
+            conditions = convert.fixup_condition(sigma_rule['detection']['condition'])
+            #notify.debug(conditions)
+        except:
+            #notify.debug(conditions)
+            continue
 
         skip_rule = stats.check_for_skip(rule, sigma_rule, sigma_rule['detection'], conditions)
         if skip_rule:
