@@ -159,7 +159,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         return rule
 
     def convert_field_name(self, product, field):
-        Notify.debug(self, "Function: {}: {} {}".format(self.convert_field_name.__name__, product, field))
+        Notify.debug(self, "Function: {}".format(self.convert_field_name.__name__))
         if product in self.config.sections():
             if field in self.config[product]:
                 return self.config[product][field]
@@ -192,7 +192,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
     def add_logic(self, rule, product, field, negate, value, is_b64):
         Notify.debug(self, "Function: {}".format(self.add_logic.__name__))
         logic = SubElement(rule, 'field')
-        name = self.convert_field_name(product.lower().strip(), field)
+        name = self.convert_field_name(product, field)
         logic.set('name', name)
         logic.set('negate', negate)
         logic.set('type', 'pcre2')
@@ -454,14 +454,7 @@ class ParseSigmaRules(object):
 
     def fixup_logic(self, logic, is_regex):
         Notify.debug(self, "Function: {}".format(self.fixup_logic.__name__))
-        if isinstance(logic, int):
-            logic = "^" + str(logic) + "$"
-            is_regex = True
-        else:
-            logic = str(logic) 
-        if len(logic) > 2:  # when converting to Wazuh pcre2 expressions, we don't need start and end wildcards
-            if logic[0] == '*': logic = logic[1:]
-            if logic[-1] == '*': logic = logic[:-1]
+        logic = str(logic)
         if is_regex:
             return logic
         else:
@@ -613,7 +606,7 @@ class ParseSigmaRules(object):
                 return field, self.handle_or_to_and(value, negate, False, '', '', False), True
             if transform.lower() == "base64|contains":
                 return field, self.handle_or_to_and(value, negate, False, '', '', False), True
-        return key, self.handle_or_to_and(value, negate, False, '', '', False), False
+        return key, self.handle_or_to_and(value, negate, False, '^(?:', ')$', False), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detections, product):
