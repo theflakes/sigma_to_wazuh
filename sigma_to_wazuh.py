@@ -455,6 +455,9 @@ class ParseSigmaRules(object):
     def fixup_logic(self, logic, is_regex):
         Notify.debug(self, "Function: {}".format(self.fixup_logic.__name__))
         logic = str(logic)
+        # if len(logic) > 2:  # when converting to Wazuh pcre2 expressions, we don't need start and end wildcards
+        #     if logic[0] == '*': logic = logic[1:]
+        #     if logic[-1] == '*': logic = logic[:-1]
         if is_regex:
             return logic
         else:
