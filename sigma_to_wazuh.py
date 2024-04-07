@@ -931,7 +931,7 @@ class TrackSkip(object):
 
     def report_stats(self, error_count, wazuh_rules_count, sigma_rules_count):
         Notify.debug(self, "Function: {}".format(self.report_stats.__name__))
-        sigma_rules_converted = sigma_rules_count - self.rules_skipped
+        sigma_rules_converted = self.find_unique_ids()
         sigma_rules_converted_percent = round(((sigma_rules_converted / sigma_rules_count) * 100), 2)
         print("\n\n" + "*" * 75)
         print(" Number of Sigma Experimental rules skipped: %s" % self.experimental_skips)
@@ -943,7 +943,7 @@ class TrackSkip(object):
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
         print("-" * 55)
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
-        print("                Total Sigma rules converted: %s" % self.find_unique_ids())
+        print("                Total Sigma rules converted: %s" % sigma_rules_converted)
         print("-" * 55)
         print("                  Total Wazuh rules created: %s" % wazuh_rules_count)
         print("-" * 55)
