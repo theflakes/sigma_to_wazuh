@@ -1010,7 +1010,6 @@ def main():
 
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
-    print(count)
     stats.report_stats(convert.error_count, wazuh_rules.rule_count, len(sigma_rule_ids))
 
 
