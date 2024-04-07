@@ -683,6 +683,11 @@ class ParseSigmaRules(object):
         return paths
     
     def convert_condition_with_demorgans_law(self, condition):
+        """
+            DeMorgan's Law allows us to convert all OR to AND log 
+            e.g. a or (b and c) -> a and not b and not c
+            Will still have multiple Wazuh rules created by 1_of logic and the like
+        """
         tokens = condition.split(' ')
         to_remove = set()
         
