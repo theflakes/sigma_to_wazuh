@@ -609,7 +609,7 @@ class ParseSigmaRules(object):
                 return field, self.handle_or_to_and(value, negate, False, '', '', False), True
             if transform.lower() == "base64|contains":
                 return field, self.handle_or_to_and(value, negate, False, '', '', False), True
-        return key, self.handle_or_to_and(value, negate, False, '^(?:', ')$', False), False
+        return key, self.handle_or_to_and(value, negate, False, '^', '$', False), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detections, product):
@@ -791,6 +791,7 @@ class TrackSkip(object):
     def __init__(self):
         self.config = configparser.ConfigParser()
         self.config.read(r'./config.ini')
+        self.wazuh_rules_file = self.config.get('sigma', 'out_file')
         self.process_experimental_rules = self.config.get('sigma', 'process_experimental')
         self.sigma_skip_ids = eval(self.config.get('sigma', 'skip_sigma_guids'), {}, {})
         self.sigma_convert_all = self.config.get('sigma', 'convert_all')
@@ -880,10 +881,10 @@ class TrackSkip(object):
         #     skip = True
         #     self.paren_skips += 1
         #     logic.append('Paren')
-        if 'timeframe' in detection:
-            skip = True
-            self.timeframe_skips += 1
-            logic.append('Timeframe')
+        # if 'timeframe' in detection:
+        #     skip = True
+        #     self.timeframe_skips += 1
+        #     logic.append('Timeframe')
         if '1_of' in condition and 'and' in condition:
             skip = True
             self.one_of_and_skips += 1
@@ -909,6 +910,24 @@ class TrackSkip(object):
             Notify.info(self, message + ": " + rule)
 
         return skip
+    
+    def find_unique_ids(self):
+        unique_ids = set()  # To store unique IDs
+
+        with open(self.wazuh_rules_file, 'r') as file:
+            content = file.read()
+
+            # Search for all occurrences of text between <!--ID: and -->
+            import re
+            pattern = r'<!--ID: (.*?)-->'
+            matches = re.findall(pattern, content)
+
+            # Add unique IDs to the set
+            for match in matches:
+                unique_ids.add(match.strip())  # Remove leading/trailing spaces
+
+        # Return the total count of unique IDs
+        return len(unique_ids)
 
     def report_stats(self, error_count, wazuh_rules_count, sigma_rules_count):
         Notify.debug(self, "Function: {}".format(self.report_stats.__name__))
@@ -924,7 +943,7 @@ class TrackSkip(object):
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
         print("-" * 55)
         print("                  Total Sigma rules skipped: %s" % self.rules_skipped)
-        print("                Total Sigma rules converted: %s" % sigma_rules_converted)
+        print("                Total Sigma rules converted: %s" % self.find_unique_ids())
         print("-" * 55)
         print("                  Total Wazuh rules created: %s" % wazuh_rules_count)
         print("-" * 55)
@@ -955,9 +974,12 @@ def main():
     convert = ParseSigmaRules()
     wazuh_rules = BuildRules()
     stats = TrackSkip()
+    sigma_rule_ids = set()
 
     for rule in convert.sigma_rules:
         sigma_rule = convert.load_sigma_rule(rule)
+        if 'id' in sigma_rule:
+            sigma_rule_ids.add(sigma_rule['id'])
         if stats.rule_not_loaded(rule, sigma_rule):
             continue
 
@@ -989,7 +1011,7 @@ def main():
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
 
-    stats.report_stats(convert.error_count, wazuh_rules.rule_count, len(convert.sigma_rules))
+    stats.report_stats(convert.error_count, wazuh_rules.rule_count, len(sigma_rule_ids))
 
 
 if __name__ == "__main__":
