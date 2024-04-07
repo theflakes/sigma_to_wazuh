@@ -880,11 +880,11 @@ class TrackSkip(object):
         #         not ') or (' in condition and condition.count('(') == 2):
         #     skip = True
         #     self.paren_skips += 1
-        #     logic.append('Paren')
-        # if 'timeframe' in detection:
-        #     skip = True
-        #     self.timeframe_skips += 1
-        #     logic.append('Timeframe')
+            logic.append('Paren')
+        if 'timeframe' in detection:
+            skip = True
+            self.timeframe_skips += 1
+            logic.append('Timeframe')
         if '1_of' in condition and 'and' in condition:
             skip = True
             self.one_of_and_skips += 1
@@ -1010,7 +1010,7 @@ def main():
 
     # write out all Wazuh rules created
     wazuh_rules.write_rules_file()
-
+    print(count)
     stats.report_stats(convert.error_count, wazuh_rules.rule_count, len(sigma_rule_ids))
 
 
