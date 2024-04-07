@@ -932,7 +932,6 @@ class TrackSkip(object):
         print("                    Sigma rules converted %%: %s" % sigma_rules_converted_percent)
         print("*" * 75 + "\n\n")
 
-
 def arguments() -> argparse.ArgumentParser:
     global debug
     parser = argparse.ArgumentParser(
