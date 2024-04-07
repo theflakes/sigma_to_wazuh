@@ -185,7 +185,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         Notify.debug(self, "Function: {}".format(self.handle_full_log_field.__name__))
         if value.startswith('^'):
             value = value[1:]
-        if value.endswith('$') and not value[-2:] == '\$':
+        if value.endswith('$') and not value[-2:] == r'\$':
             value = value[:-1]
         return value
 
@@ -759,7 +759,6 @@ class ParseSigmaRules(object):
                 paths = self.handle_one_of(sigma_rule['detection'], t, path, negate['n'])
                 ignore = True
                 logic_paths.extend(paths)
-                one_of = False
                 continue
             if is_or and not negate['n']:
                 logic_paths.append(path)
@@ -804,6 +803,7 @@ class TrackSkip(object):
         self.near_skips = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
+        self.one_of_and_skips = 0
         self.experimental_skips = 0
         self.hard_skipped = 0
         self.rules_skipped = 0
@@ -884,6 +884,10 @@ class TrackSkip(object):
             skip = True
             self.timeframe_skips += 1
             logic.append('Timeframe')
+        if '1_of' in condition and 'and' in condition:
+            skip = True
+            self.one_of_and_skips += 1
+            logic.append('1 of and')
         return skip, "{} {}".format(message, logic)
 
     def check_for_skip(self, rule, sigma_rule, detection, condition):
@@ -913,6 +917,7 @@ class TrackSkip(object):
         print("\n\n" + "*" * 75)
         print(" Number of Sigma Experimental rules skipped: %s" % self.experimental_skips)
         print("    Number of Sigma TIMEFRAME rules skipped: %s" % self.timeframe_skips)
+        print("Number of Sigma 1 OF with AND rules skipped: %s" % self.one_of_and_skips)
         print("        Number of Sigma PAREN rules skipped: %s" % self.paren_skips)
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
         print("       Number of Sigma CONFIG rules skipped: %s" % self.hard_skipped)
