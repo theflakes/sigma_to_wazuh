@@ -681,29 +681,31 @@ class ParseSigmaRules(object):
             paths.extend([path_start])
         Notify.debug(self, "One of results: {}".format(paths))
         return paths
+
+    # def convert_one_of(self, detections, token, path, negate):
+    #     pass
     
-    def convert_condition_with_demorgans_law(self, condition):
-        """
-            DeMorgan's Law allows us to convert all OR to AND log 
-            e.g. a or (b and c) -> a and not b and not c
-            Will still have multiple Wazuh rules created by 1_of logic and the like
-        """
-        tokens = condition.split(' ')
-        to_remove = set()
+    # def convert_condition_with_demorgans_law(self, condition):
+    #     """
+    #         DeMorgan's Law allows us to convert all OR to AND log 
+    #         e.g. a or (b and c) -> a and not (not b and not c)
+    #     """
+    #     tokens = condition.split(' ')
+    #     to_remove = set()
         
-        for i, t in enumerate(tokens):
-            if t == 'or':
-                to_remove.add(i)
+    #     for i, t in enumerate(tokens):
+    #         if t == 'or':
+    #             to_remove.add(i)
         
-        # Construct the condition replacing 'or' with 'and not'
-        result = ''
-        for i, t in enumerate(tokens):
-            if i not in to_remove:
-                result += t + ' '
-            else:
-                result += 'and not'
+    #     # Construct the condition replacing 'or' with 'and not'
+    #     result = ''
+    #     for i, t in enumerate(tokens):
+    #         if i not in to_remove:
+    #             result += t + ' '
+    #         else:
+    #             result += 'and not'
         
-        return result
+    #     return result
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
         Notify.debug(self, "Function: {}".format(self.build_logic_paths.__name__))
@@ -972,11 +974,11 @@ def main():
 
         if isinstance(conditions, list):
             for condition in conditions:  # create new rule for each condition, needs work
-                condition = convert.convert_condition_with_demorgans_law(condition)
+                # condition = convert.convert_condition_with_demorgans_law(condition)
                 tokens = condition.strip().split(' ')
                 convert.build_logic_paths(wazuh_rules, tokens, sigma_rule, partial_url_path)
             continue
-        condition = convert.convert_condition_with_demorgans_law(conditions)
+        # condition = convert.convert_condition_with_demorgans_law(conditions)
         tokens = conditions.strip().split(' ')
         convert.build_logic_paths(wazuh_rules, tokens, sigma_rule, partial_url_path)
 
