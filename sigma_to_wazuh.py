@@ -781,7 +781,6 @@ class ParseSigmaRules(object):
         Notify.debug(self, "Function: {}".format(self.build_logic_paths.__name__))
         logic_paths = []        # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
         path = []               # minimum logic for one AND path
-        #negate = {'n': False, 'd': 0}
         negate = False
         level = 0               # track paren nesting levels
         is_or = False           # did we bump into an OR
@@ -851,11 +850,20 @@ class ParseSigmaRules(object):
         Notify.debug(self, "Logic Paths: {}".format(logic_paths))
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
+    def build_logic(self, rules, tokens, sigma_rule, sigma_rule_link):
+        logic = {
+            'negate': False,
+            'terms': []
+        }
+        logics = []
+        for t in tokens:
+            pass
+
 
 class TrackSkips(object):
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config.read(r'./config.ini')
+        self.config.read(r'./config.ini', encoding="utf8")
         self.wazuh_rules_file = self.config.get('sigma', 'out_file')
         self.process_experimental_rules = self.config.get('sigma', 'process_experimental')
         self.sigma_skip_ids = eval(self.config.get('sigma', 'skip_sigma_guids'), {}, {})
@@ -986,7 +994,7 @@ class TrackSkips(object):
     def find_unique_ids(self):
         unique_ids = set()  # To store unique IDs
 
-        with open(self.wazuh_rules_file, 'r') as file:
+        with open(self.wazuh_rules_file, 'r', encoding="utf8") as file:
             content = file.read()
 
             # Search for all occurrences of text between <!--ID: and -->
