@@ -200,7 +200,6 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         logic.set('type', 'pcre2')
         value = str(value).replace(r'\?', r'.').replace(r'\\', r'\\+') # This does replace escaped '*'s, FIX UP NEEDED
         value = re.sub(r'(?:\\\\\+){2,}', r'\\\\+', value) # cleanup multiple '\\+' back to back
-        print(name)
         if name == 'full_log':
             logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+') # assumption is all '*' are wildcards
         else:
@@ -632,7 +631,6 @@ class ParseSigmaRules(object):
         Notify.debug(self, "Function: {}".format(self.is_list_of_dicts.__name__))
         if isinstance(data, list):
             for i in data:
-                print(i)
                 if isinstance(i, dict):
                     return True
         return False
