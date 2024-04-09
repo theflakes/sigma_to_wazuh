@@ -753,12 +753,10 @@ class ParseSigmaRules(object):
     
     def compare_lists(self, list1, list2):
         Notify.debug(self, "Function: {}".format(self.compare_lists.__name__))
-        # Iterate over each number in the second list
         for num2 in list2:
             # If the number is less than any number in the first list, return True
             if any(num1 > num2 for num1 in list1):
                 return True
-        # If no such number is found, return False
         return False
     
     def reorder_or_and(self, tokens):
