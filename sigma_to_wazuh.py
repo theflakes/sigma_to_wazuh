@@ -188,6 +188,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             value = value[1:]
         if value.endswith('$') and not value[-2:] == r'\$':
             value = value[:-1]
+        # value = value.replace('^|$', '|')
         return value
 
     def add_logic(self, rule, product, field, negate, value, is_b64):
@@ -199,6 +200,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
         logic.set('type', 'pcre2')
         value = str(value).replace(r'\?', r'.').replace(r'\\', r'\\+') # This does replace escaped '*'s, FIX UP NEEDED
         value = re.sub(r'(?:\\\\\+){2,}', r'\\\\+', value) # cleanup multiple '\\+' back to back
+        print(name)
         if name == 'full_log':
             logic.text = self.if_ends_in_space(self.handle_full_log_field(value), is_b64).replace(r'\*', r'.+') # assumption is all '*' are wildcards
         else:
@@ -598,7 +600,7 @@ class ParseSigmaRules(object):
         else:
             return self.handle_list(value, False, False, is_regex, exact_match)
 
-    def convert_transforms(self, key, value, negate):
+    def convert_transforms(self, key, value, negate, rules, product):
         Notify.debug(self, "Function: {}".format(self.convert_transforms.__name__))
         if '|' in key:
             field, transform = key.split('|', 1)
@@ -618,15 +620,22 @@ class ParseSigmaRules(object):
                 return field, self.handle_or_to_and(value, negate, False, '', '', False, False), True
             # if transform.lower() == "cidr":
             #     return field, self.handle_or_to_and(value, negate, False, '', '', False, True), False
-        return key, self.handle_or_to_and(value, negate, False, '', '', False, True), False
+        else:
+            field = key            
+        field_name = rules.convert_field_name(product, field)
+        if field_name == 'full_log':
+            return key, self.handle_or_to_and(value, negate, False, '', '', False, False), False
+        else:
+            return key, self.handle_or_to_and(value, negate, False, '', '', False, True), False
     
-    def is_not_list_of_dicts(self, data):
-        Notify.debug(self, "Function: {}".format(self.is_not_list_of_dicts.__name__))
-        if not isinstance(data, list):
+    def is_list_of_dicts(self, data):
+        Notify.debug(self, "Function: {}".format(self.is_list_of_dicts.__name__))
+        if isinstance(data, list):
             for i in data:
-                if not isinstance(i, dict):
-                    return False
-        return True
+                print(i)
+                if isinstance(i, dict):
+                    return True
+        return False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detections, product):
@@ -637,11 +646,11 @@ class ParseSigmaRules(object):
         for d in detection:
             Notify.debug(self, "Detection: {}".format(d))
             for k, v in d.items():
-                field, logic, is_b64 = self.convert_transforms(k, v, negate)
+                field, logic, is_b64 = self.convert_transforms(k, v, negate, rules, product)
                 Notify.debug(self, "Logic: {}".format(logic))
-                if self.is_not_list_of_dicts(k):
-                    self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
-                    continue
+                # if not self.is_list_of_dicts(k):
+                #     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
+                #     continue
                 self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
 
     def handle_logic_paths(self, rules, sigma_rule, sigma_rule_link, logic_paths):
