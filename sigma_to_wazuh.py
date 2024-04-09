@@ -188,7 +188,6 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
             value = value[1:]
         if value.endswith('$') and not value[-2:] == r'\$':
             value = value[:-1]
-        # value = value.replace('^|$', '|')
         return value
 
     def add_logic(self, rule, product, field, negate, value, is_b64):
@@ -581,7 +580,7 @@ class ParseSigmaRules(object):
                 return self.handle_b64offsets(value)
             return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
         if exact_match:
-            return self.fixup_logic('^' + str(value) + '$', True)
+            return self.fixup_logic('^' + re.escape(str(value)) + '$', True)
         else:
             return self.fixup_logic(value, is_regex)
 
