@@ -619,6 +619,14 @@ class ParseSigmaRules(object):
             # if transform.lower() == "cidr":
             #     return field, self.handle_or_to_and(value, negate, False, '', '', False, True), False
         return key, self.handle_or_to_and(value, negate, False, '', '', False, True), False
+    
+    def is_not_list_of_dicts(self, data):
+        Notify.debug(self, "Function: {}".format(self.is_not_list_of_dicts.__name__))
+        if not isinstance(data, list):
+            for i in data:
+                if not isinstance(i, dict):
+                    return False
+        return True
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detections, product):
@@ -631,7 +639,7 @@ class ParseSigmaRules(object):
             for k, v in d.items():
                 field, logic, is_b64 = self.convert_transforms(k, v, negate)
                 Notify.debug(self, "Logic: {}".format(logic))
-                if k == 'keywords':
+                if self.is_not_list_of_dicts(k):
                     self.handle_keywords(rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64)
                     continue
                 self.is_dict_list_or_not(logic, rules, rule, sigma_rule, sigma_rule_link, product, field, negate, is_b64)
