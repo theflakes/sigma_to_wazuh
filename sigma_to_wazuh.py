@@ -850,14 +850,14 @@ class ParseSigmaRules(object):
         Notify.debug(self, "Logic Paths: {}".format(logic_paths))
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
-    def build_logic(self, rules, tokens, sigma_rule, sigma_rule_link):
-        logic = {
-            'negate': False,
-            'terms': []
-        }
-        logics = []
-        for t in tokens:
-            pass
+    # def build_logic(self, rules, tokens, sigma_rule, sigma_rule_link):
+    #     logic = {
+    #         'negate': False,
+    #         'terms': []
+    #     }
+    #     logics = []
+    #     for t in tokens:
+    #         pass
 
 
 class TrackSkips(object):
