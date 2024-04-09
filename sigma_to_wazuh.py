@@ -604,7 +604,7 @@ class ParseSigmaRules(object):
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
                 return field, self.handle_or_to_and(value, negate, False, '', '', False, False), False
-            if transform.lower() == 'contains|all':
+            if transform.lower() in ['contains|all', 'all']:
                 return field, self.handle_or_to_and(value, negate, True, '', '', False, False), False
             if transform.lower() == 'startswith':
                 return field, self.handle_or_to_and(value, negate, False, '^(?:', ')', False, False), False
