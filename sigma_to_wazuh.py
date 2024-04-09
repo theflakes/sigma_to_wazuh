@@ -23,6 +23,7 @@ import bs4, re
 import json
 import base64
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
+import yaml
 from ruamel.yaml import YAML
 
 debug = False
@@ -477,20 +478,6 @@ class ParseSigmaRules(object):
         offset3 = (str(base64.b64encode(('  ' + value).encode('utf-8')), 'utf-8')).replace('=', '')[3:]
         return offset1 + "|" + offset2 + "|" + offset3
 
-    def handle_list(self, value, is_b64, b64_offset, is_regex):
-        Notify.debug(self, "Function: {}".format(self.handle_list.__name__))
-        if isinstance(value, list):
-            if is_b64:
-                if b64_offset:
-                    return self.handle_b64offsets_list(value)
-                return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
-            return ('|'.join([self.fixup_logic(i, is_regex) for i in value]))
-        if is_b64:
-            if b64_offset:
-                return self.handle_b64offsets(value)
-            return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
-        return self.fixup_logic(value, is_regex)
-
     def handle_keywords(self, rules, rule, sigma_rule, sigma_rule_link, product, logic, negate, is_b64):
         Notify.debug(self, "Function: {}".format(self.handle_keywords.__name__))
         rules.add_logic(rule, product, "full_log", negate, logic, is_b64)
@@ -577,7 +564,27 @@ class ParseSigmaRules(object):
             return sigma_rule['logsource']['product'].lower()
         return ""
 
-    def handle_or_to_and(self, value, negate, contains_all, start, end, is_regex):
+    def handle_list(self, value, is_b64, b64_offset, is_regex, exact_match):
+        Notify.debug(self, "Function: {}".format(self.handle_list.__name__))
+        if isinstance(value, list):
+            if is_b64:
+                if b64_offset:
+                    return self.handle_b64offsets_list(value)
+                return ('|'.join([str(base64.b64encode(i.encode('utf-8')), 'utf-8') for i in value])).replace('=', '')
+            if exact_match:
+                return '^' + ('$|^'.join([self.fixup_logic(i, is_regex) for i in value])) + '$'
+            else:
+                return ('|'.join([self.fixup_logic(i, is_regex) for i in value]))
+        if is_b64:
+            if b64_offset:
+                return self.handle_b64offsets(value)
+            return str(base64.b64encode(value.encode('utf-8')), 'utf-8').replace('=', '')
+        if exact_match:
+            return self.fixup_logic('^' + str(value) + '$', True)
+        else:
+            return self.fixup_logic(value, is_regex)
+
+    def handle_or_to_and(self, value, negate, contains_all, start, end, is_regex, exact_match):
         Notify.debug(self, "Function: {}".format(self.handle_or_to_and.__name__))
         """
             We have to split up contains_all and any negated fields into individual field statements in Wazuh rules
@@ -589,27 +596,29 @@ class ParseSigmaRules(object):
                 result.append(start + v + end)
             return result
         else:
-            return start + self.handle_list(value, False, False, is_regex) + end
+            return self.handle_list(value, False, False, is_regex, exact_match)
 
     def convert_transforms(self, key, value, negate):
         Notify.debug(self, "Function: {}".format(self.convert_transforms.__name__))
         if '|' in key:
             field, transform = key.split('|', 1)
             if transform.lower() == 'contains':
-                return field, self.handle_or_to_and(value, negate, False, '', '', False), False
+                return field, self.handle_or_to_and(value, negate, False, '', '', False, False), False
             if transform.lower() == 'contains|all':
-                return field, self.handle_or_to_and(value, negate, True, '', '', False), False
+                return field, self.handle_or_to_and(value, negate, True, '', '', False, False), False
             if transform.lower() == 'startswith':
-                return field, self.handle_or_to_and(value, negate, False, '^(?:', ')', False), False
+                return field, self.handle_or_to_and(value, negate, False, '^(?:', ')', False, False), False
             if transform.lower() == 'endswith':
-                return field, self.handle_or_to_and(value, negate, False, '(?:', ')$', False), False
+                return field, self.handle_or_to_and(value, negate, False, '(?:', ')$', False, False), False
             if transform.lower() == "re":
-                return field, self.handle_or_to_and(value, negate, False, '', '', True), False
+                return field, self.handle_or_to_and(value, negate, False, '', '', True, False), False
             if transform.lower() == "base64offset|contains":
-                return field, self.handle_or_to_and(value, negate, False, '', '', False), True
+                return field, self.handle_or_to_and(value, negate, False, '', '', False, False), True
             if transform.lower() == "base64|contains":
-                return field, self.handle_or_to_and(value, negate, False, '', '', False), True
-        return key, self.handle_or_to_and(value, negate, False, '^', '$', False), False
+                return field, self.handle_or_to_and(value, negate, False, '', '', False, False), True
+            # if transform.lower() == "cidr":
+            #     return field, self.handle_or_to_and(value, negate, False, '', '', False, True), False
+        return key, self.handle_or_to_and(value, negate, False, '', '', False, True), False
 
     def handle_fields(self, rules, rule, token, negate, sigma_rule,
                       sigma_rule_link, detections, product):
@@ -682,70 +691,127 @@ class ParseSigmaRules(object):
         Notify.debug(self, "One of results: {}".format(paths))
         return paths
 
-    # def convert_one_of(self, detections, token, path, negate):
-    #     pass
+    def propagate_nots(self, tokens):
+        Notify.debug(self, "Function: {}".format(self.propagate_nots.__name__))
+        Notify.debug(self, "Tokens: {}".format(tokens))
+        new_tokens = []
+        not_found = False
+        paren_found_after_not = False
+        level = 0
+        for t in tokens:
+            if not_found and paren_found_after_not and (t not in ['or', 'and', '(', ')']):
+                new_tokens.append('not')
+            elif t == 'not':
+                not_found = True
+            elif t == '(' and not_found:
+                level += 1
+                if level == 1:
+                    new_tokens.pop()
+                paren_found_after_not = True
+            elif t == ')':
+                if level > 0:
+                    level -= 1
+                elif level == 0:
+                    not_found = False
+                    paren_found_after_not = False
+            new_tokens.append(t)
+        Notify.debug(self, "New Tokens: {}".format(new_tokens))
+        return new_tokens
     
-    # def convert_condition_with_demorgans_law(self, condition):
-    #     """
-    #         DeMorgan's Law allows us to convert all OR to AND log 
-    #         e.g. a or (b and c) -> a and not (not b and not c)
-    #     """
-    #     tokens = condition.split(' ')
-    #     to_remove = set()
-        
-    #     for i, t in enumerate(tokens):
-    #         if t == 'or':
-    #             to_remove.add(i)
-        
-    #     # Construct the condition replacing 'or' with 'and not'
-    #     result = ''
-    #     for i, t in enumerate(tokens):
-    #         if i not in to_remove:
-    #             result += t + ' '
-    #         else:
-    #             result += 'and not'
-        
-    #     return result
+    def reorder_tokens(self, tokens):
+        Notify.debug(self, "Function: {}".format(self.reorder_tokens.__name__))
+        Notify.debug(self, "Tokens: {}".format(tokens))
+        new_tokens = []
+        for t in reversed(tokens):
+            if t == 'not':
+                if len(new_tokens) > 1 and new_tokens[-2] in ['1_of', 'all_of']:
+                    new_tokens.insert(-2, t)
+                else:
+                    new_tokens.insert(-1, t)
+            elif t == '1_of':
+                new_tokens.insert(-1, t)
+            elif t == 'all_of':
+                new_tokens.insert(-1, t)
+            elif t == '(':
+                new_tokens.append(')')
+            elif t == ')':
+                new_tokens.append('(')
+            else:
+                new_tokens.append(t)
+        Notify.debug(self, "Tokens: {}".format(new_tokens))
+        return new_tokens
+    
+    def reorder_one_ofs(self, tokens):
+        Notify.debug(self, "Function: {}".format(self.reorder_one_ofs.__name__))
+        tokens_length = len(tokens)
+        if tokens_length <= 2:
+            return tokens
+        if (not tokens[0] == '1_of' and not tokens[1] == '1_of' and 'and' in tokens and tokens_length < 6):
+            return tokens
+        tokens = self.reorder_tokens(tokens)
+        return tokens
+    
+    def compare_lists(self, list1, list2):
+        Notify.debug(self, "Function: {}".format(self.compare_lists.__name__))
+        # Iterate over each number in the second list
+        for num2 in list2:
+            # If the number is less than any number in the first list, return True
+            if any(num1 > num2 for num1 in list1):
+                return True
+        # If no such number is found, return False
+        return False
+    
+    def reorder_or_and(self, tokens):
+        Notify.debug(self, "Function: {}".format(self.reorder_or_and.__name__))
+        ors = []
+        ands = []
+        left_parens = []
+        right_parens = []
+        for (i, t) in enumerate(tokens):
+            if t == 'or':
+                ors.append(i)
+            elif t == 'and':
+                ands.append(i)
+            elif t == '(':
+                left_parens.append(i)
+            elif t == ')':
+                right_parens.append(i)
+        if self.compare_lists(ors, ands):
+            self.reorder_tokens(tokens)        
 
     def build_logic_paths(self, rules, tokens, sigma_rule, sigma_rule_link):
         Notify.debug(self, "Function: {}".format(self.build_logic_paths.__name__))
         logic_paths = []        # we can have multiple paths for evaluating the sigma rule as Wazuh AND logic
         path = []               # minimum logic for one AND path
-        negate = {'n': False, 'd': 0}
+        #negate = {'n': False, 'd': 0}
+        negate = False
         level = 0               # track paren nesting levels
         is_or = False           # did we bump into an OR
         is_and = False          # did we bump into an and
         all_of = False          # handle "all of" directive
         one_of = False          # handle "1 of" directive
         ignore = False          # if exiting the token loop and "all_of" or "one_of" was the last processed don't add token to logic_paths
-        tokens = list(filter(None, tokens))  # remove all Null entries
         Notify.debug(self, "*" * 80)
         Notify.debug(self, "Rule ID: " + sigma_rule['id'])
         Notify.debug(self, "Rule Link: " + sigma_rule_link)
         Notify.debug(self, "Tokens: {}".format(tokens))
+        tokens = list(filter(None, tokens))  # remove all Null entries
+        tokens = self.reorder_one_ofs(tokens)
+        tokens = self.propagate_nots(tokens)
         for t in tokens:
             if t.lower() == 'not':
-                if negate['n']:
-                    negate['n'] = False
-                else:
-                    negate['n'] = True
-                    negate['d'] = level
+                negate = True
                 continue
             if t == '(':
                 level += 1
                 continue
             if t == ')':
-                if negate['d'] == level:
-                    negate['n'] = False
-                    negate['d'] = 0
                 level -= 1
                 continue
             if t.lower() == 'or':
                 is_or = True
                 continue
             if t.lower() == 'and':
-                if level == 0:
-                    negate['n'] = False
                 is_or = False
                 is_and = True
                 continue
@@ -756,11 +822,11 @@ class ParseSigmaRules(object):
                 continue
             if one_of:
                 # one_of logic parsing is an utter kludge (e.g. what if 1_of comes at the beginning of condition followed by more logic?)
-                paths = self.handle_one_of(sigma_rule['detection'], t, path, negate['n'])
+                paths = self.handle_one_of(sigma_rule['detection'], t, path, negate)
                 ignore = True
                 logic_paths.extend(paths)
                 continue
-            if is_or and not negate['n']:
+            if is_or and not negate:
                 logic_paths.append(path)
                 if level == 0 or not is_and:
                     path = []
@@ -769,7 +835,7 @@ class ParseSigmaRules(object):
             if t.lower() == '1_of':
                 one_of = True
                 continue
-            if negate['n']:
+            if negate:
                 if path and path[-1] != 'not':
                     path.append('not')
                 elif not path:
@@ -778,6 +844,7 @@ class ParseSigmaRules(object):
                 all_of = True
                 continue
             path.append(t)
+            negate = False
             ignore = False
             Notify.debug(self, "Logic Path: {}".format(path))
         if path and not ignore:
@@ -787,7 +854,7 @@ class ParseSigmaRules(object):
         self.handle_logic_paths(rules, sigma_rule, sigma_rule_link, logic_paths)
 
 
-class TrackSkip(object):
+class TrackSkips(object):
     def __init__(self):
         self.config = configparser.ConfigParser()
         self.config.read(r'./config.ini')
@@ -802,6 +869,7 @@ class TrackSkip(object):
         self.sigma_skip_categories = eval(self.config.get('sigma', 'skip_categories'), {}, {})
         self.sigma_skip_services = eval(self.config.get('sigma', 'skip_services'), {}, {})
         self.near_skips = 0
+        self.cidr = 0
         self.paren_skips = 0
         self.timeframe_skips = 0
         self.one_of_and_skips = 0
@@ -880,15 +948,21 @@ class TrackSkip(object):
         #         not ') or (' in condition and condition.count('(') == 2):
         #     skip = True
         #     self.paren_skips += 1
-            logic.append('Paren')
-        if 'timeframe' in detection:
+        #     logic.append('Paren')
+        detection_string = yaml.dump(detection) # need to search it as string
+        if 'timeframe' in detection_string:
             skip = True
             self.timeframe_skips += 1
             logic.append('Timeframe')
-        if '1_of' in condition and 'and' in condition:
+        if '|cidr:' in detection_string:
+            skip = True
+            self.cidr += 1
+            logic.append('Cidr')
+        one_of_count = condition.lower().split().count('1_of') # filter out rules with multiple 1_of's
+        if (one_of_count > 1 and 'and' in condition) or ("not 1_of" in condition):
             skip = True
             self.one_of_and_skips += 1
-            logic.append('1 of and')
+            logic.append('more than 1_of with and')
         return skip, "{} {}".format(message, logic)
 
     def check_for_skip(self, rule, sigma_rule, detection, condition):
@@ -938,6 +1012,7 @@ class TrackSkip(object):
         print("    Number of Sigma TIMEFRAME rules skipped: %s" % self.timeframe_skips)
         print("Number of Sigma 1 OF with AND rules skipped: %s" % self.one_of_and_skips)
         print("        Number of Sigma PAREN rules skipped: %s" % self.paren_skips)
+        print("         Number of Sigma CIDR rules skipped: %s" % self.cidr)
         print("         Number of Sigma NEAR rules skipped: %s" % self.near_skips)
         print("       Number of Sigma CONFIG rules skipped: %s" % self.hard_skipped)
         print("        Number of Sigma ERROR rules skipped: %s" % error_count)
@@ -973,7 +1048,7 @@ def main():
     notify.debug("Function: {}".format(main.__name__))
     convert = ParseSigmaRules()
     wazuh_rules = BuildRules()
-    stats = TrackSkip()
+    stats = TrackSkips()
     sigma_rule_ids = set()
 
     for rule in convert.sigma_rules:
@@ -1000,11 +1075,9 @@ def main():
 
         if isinstance(conditions, list):
             for condition in conditions:  # create new rule for each condition, needs work
-                # condition = convert.convert_condition_with_demorgans_law(condition)
                 tokens = condition.strip().split(' ')
                 convert.build_logic_paths(wazuh_rules, tokens, sigma_rule, partial_url_path)
             continue
-        # condition = convert.convert_condition_with_demorgans_law(conditions)
         tokens = conditions.strip().split(' ')
         convert.build_logic_paths(wazuh_rules, tokens, sigma_rule, partial_url_path)
 
