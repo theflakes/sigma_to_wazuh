@@ -181,7 +181,7 @@ All Sigma rules licensed under DRL: https://github.com/SigmaHQ/sigma/blob/master
 
     def handle_full_log_field(self, value):
         """
-            We do not want to honor Sigma startwith and endswith logic if we use the full_log field
+            We do not want to honor Sigma startswith and endswith logic if we use the full_log field
         """
         Notify.debug(self, "Function: {}".format(self.handle_full_log_field.__name__))
         if value.startswith('^'):
@@ -597,8 +597,21 @@ class ParseSigmaRules(object):
             return result
         else:
             return self.handle_list(value, False, False, is_regex, exact_match)
+        
+    def handle_windash(self, value):
+        if isinstance(value, list):
+            temp = []
+            for v in value:
+                temp.append(v.replace('-', '[/-]'))
+            value = temp
+        else:
+            value = value.replace('-', '[/-]')
+        return value
 
     def convert_transforms(self, key, value, negate, rules, product):
+        """
+            This needs to be refactored to better handle expanding Sigma rule modifiers
+        """
         Notify.debug(self, "Function: {}".format(self.convert_transforms.__name__))
         if '|' in key:
             field, transform = key.split('|', 1)
@@ -606,6 +619,14 @@ class ParseSigmaRules(object):
                 return field, self.handle_or_to_and(value, negate, False, '', '', False, False), False
             if transform.lower() in ['contains|all', 'all']:
                 return field, self.handle_or_to_and(value, negate, True, '', '', False, False), False
+            
+            if transform.lower() in ['contains|windash', 'windash']:
+                value = self.handle_windash(value)
+                return field, self.handle_or_to_and(value, negate, False, '', '', True, False), False
+            if transform.lower() in ['contains|windash|all', 'contains|all|windash', 'windash|all']:
+                value = self.handle_windash(value)
+                return field, self.handle_or_to_and(value, negate, True, '', '', True, False), False
+
             if transform.lower() == 'startswith':
                 return field, self.handle_or_to_and(value, negate, False, '^(?:', ')', False, False), False
             if transform.lower() == 'endswith':
