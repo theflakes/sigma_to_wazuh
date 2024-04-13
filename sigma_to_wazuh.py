@@ -611,6 +611,7 @@ class ParseSigmaRules(object):
     def convert_transforms(self, key, value, negate, rules, product):
         """
             This needs to be refactored to better handle expanding Sigma rule modifiers
+            See: https://sigmahq.io/docs/basics/modifiers.html#windash
         """
         Notify.debug(self, "Function: {}".format(self.convert_transforms.__name__))
         if '|' in key:
