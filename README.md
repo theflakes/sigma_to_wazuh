@@ -1,5 +1,5 @@
 # Moving this project to GO at the repo below:
-https://github.com/theflakes/StoW
+https://github.com/theflakes/StoW  
 I won't be updating the Python3 version anymore. Please refer to the above repo for any updates to this work.  
 # sigma_to_wazuh
 Convert Sigma rules to Wazuh rules
